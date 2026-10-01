@@ -321,6 +321,8 @@ dialog.wide{width:min(900px,calc(100% - 32px))}
 .attprev{background:var(--sunk);border-radius:10px;padding:20px;display:flex;justify-content:center}
 .pdfpage{background:#fff;color:#333;width:260px;min-height:320px;box-shadow:0 2px 10px rgba(0,0,0,.15);padding:22px;display:flex;flex-direction:column;gap:10px}.pdfpage i{display:block;height:8px;background:#e3e3e3;border-radius:4px}
 .teamgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}
+.actb{font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.actb.req{background:var(--warn-bg);color:var(--warn)}.actb.none{background:var(--ok-bg);color:var(--ok)}
 </style>
 
 </head>
@@ -442,7 +444,7 @@ function composer(o){
   const store=folder=>{const to=parse(toIn.value);const cl=o.to&&o.to.id&&S.clients.includes(o.to)?o.to:S.clients.find(c=>to.some(t=>t.email===c.email));
     if(o.draftOf){const d=S.mails.find(x=>x.id===o.draftOf);if(d)S.mails.splice(S.mails.indexOf(d),1);}
     const m={id:"ml"+Date.now()+Math.random().toString(36).slice(2,5),box,folder,from:{name:isAdmin()?"Balancd Praxis":P(S.me).name,email:isAdmin()?S.practice.email:mailOf(S.me)},to,cc:parse(ccIn.value),subj:sub.value||cur.name,body:body.value,t:new Date(NOW),read:true,att:att.slice(),client:cl?cl.id:null,thread:o.thread||null};
-    m.thread=m.thread||m.id;S.mails.unshift(m);return {m,cl};};
+    m.thread=m.thread||m.id;S.mails.unshift(m);if(folder==="sent"&&m.thread)S.mails.forEach(x=>{if(x.thread===m.thread&&x.folder==="inbox")x.answered=true;});return {m,cl};};
   dlg.classList.add("wide");
   modal(o.title||"E-Mail schreiben",h("div",{class:"cmp"},left,h("div",{class:"col"},sug,h("p",{class:"small muted",style:"margin:0"},"Name, Datum und Psycholog:in werden aus dem Termin oder der Anfrage eingesetzt. Vorlagen pflegt die Administration unter Einstellungen. Gesendete E-Mails erscheinen im Ordner «Gesendet» und in der Akte."))),
     [h("button",{type:"button",class:"btn",onclick:()=>{dlg.close();}},"Abbrechen"),
@@ -1204,9 +1206,9 @@ function mailDialog(title,text,onSend){const ta=h("textarea",{style:"min-height:
 
 /* ---- requests ---- */
 const DECLINE=["Nur Grundversicherung","Ausserhalb unseres Angebots","Keine passende Psycholog:in / kein Termin","Zusatzversicherung deckt nicht","Nicht erreichbar","Hat sich anders entschieden","Andere"];
-function reqView(){
+function reqView(onlyId){
   const filt=S.reqFilter||"open";const R=S.requests.filter(r=>filt==="open"?["neu","in Bearbeitung"].includes(r.status):r.status===filt);
-  const r=S.requests.find(x=>x.id===S.openReq)||R[0];
+  const r=onlyId?S.requests.find(x=>x.id===onlyId):(S.requests.find(x=>x.id===S.openReq)||R[0]);
   const list=h("div",{class:"list"},h("div",{class:"row",style:"padding:10px 12px;border-bottom:1px solid var(--line)"},...[["open","Offen"],["gebucht","Gebucht"],["abgelehnt","Abgelehnt"]].map(([v,l])=>h("button",{type:"button",class:"pill "+(filt===v?"acc":""),style:"border:0;cursor:pointer",onclick:()=>{S.reqFilter=v;S.openReq=null;render();}},l))),
     ...(R.length?R.map(x=>h("button",{type:"button",class:"li","aria-current":r&&x.id===r.id?"true":null,onclick:()=>{S.openReq=x.id;render();}},h("div",{class:"row"},h("b",null,x.name),h("span",{class:"spacer"}),h("span",{class:"small muted"},fDay(x.created))),h("span",{class:"small muted"},x.channel+" · "+x.age+" · "+x.reason),h("span",{class:"small",style:"font-weight:700;color:var(--accent)"},x.status))):[h("p",{class:"muted",style:"padding:14px;margin:0"},"Keine Anfragen.")]));
   if(!r) return h("div",{class:"col"},h("div",{class:"ptitle"},h("h1",null,"Anfragen")),list);
@@ -1232,6 +1234,7 @@ function reqView(){
       h("button",{type:"button",class:"btn",onclick:()=>{const why=declineSel.value;const kid=r.age==="unter 18";const rec=why==="Nur Grundversicherung"||why==="Ausserhalb unseres Angebots";r.mails=r.mails||[];
         composer({title:(rec?"Empfehlung – ":"Absage – ")+(kid?"Jugendliche":"Erwachsene"),to:r,ctx:"req",tpl:(rec?"rec_":"dec_")+(kid?"y":"a"),vars:{},log:r.mails,onSend:()=>{r.status="abgelehnt";r.reasonDecline=why;}});}},"Absage / Empfehlung vorbereiten")):
       h("div",{class:"card"},r.status==="gebucht"?"Gebucht: "+(r.bookedText||""):"Abgelehnt: "+(r.reasonDecline||"")));
+  if(onlyId)return detail;
   return h("div",{class:"split"},list,detail);
 }
 function bookFromRequest(r,p,t){let pay="link";const md=siteOK(p.id,t)?"site":"online";
@@ -1240,7 +1243,7 @@ function bookFromRequest(r,p,t){let pay="link";const md=siteOK(p.id,t)?"site":"o
     h("div",{class:"col",style:"gap:6px"},h("b",{class:"small"},"Bezahlung Erstgespräch (im Voraus)"),pr("link","Zahlungslink per E-Mail (Karte oder TWINT)"),pr("twint","TWINT direkt (QR-Code)"),h("span",{class:"small muted"},"Keine Barzahlung. Ab der 2. Sitzung automatisch mit der Monatsrechnung.")),
     h("p",{class:"small muted",style:"margin:0"},"Die Bestätigung enthält automatisch "+(r.agb?"":"den Link zur AGB-Bestätigung, ")+(r.age==="unter 18"?"den Link für die Erziehungsberechtigten, ":"")+"GLN, Kalenderdatei und "+(md==="online"?"Video-Link":"Adresse")+".")),
     [h("button",{type:"button",class:"btn",onclick:()=>dlg.close()},"Abbrechen"),h("button",{type:"button",class:"btn primary",onclick:()=>{const cl=ensureClient(r.name,{psy:p.id,email:r.email,phone:r.phone,dob:r.dob,addr:r.addr,agb:r.agb,minor:r.age==="unter 18"});
-      cl.source=r.source||"";S.appts.push({id:"a"+Date.now(),start:t,psy:p.id,client:cl.id,type:"ini",mode:md,room:md==="site"?roomFor(p.id,t):"",status:"geplant",doc:"",isNew:true,pay,payState:"offen"});r.status="gebucht";r.bookedText=fDT(t)+" bei "+p.name;dlg.close();render();r.mails=r.mails||[];composer({title:"Terminbestätigung",to:r,ctx:"req",tpl:r.age==="unter 18"?"conf_y":md==="online"?"conf_o":"confirm",vars:{psy:p.name,datum:fDay(t),datum_lang:dLong(t),zeit:fTime(t).replace(":",".")},log:r.mails});toast("Gebucht, Klient:in angelegt. Bitte Bestätigung prüfen und senden.");}},"Buchen und Bestätigung vorbereiten")]);
+      cl.source=r.source||"";S.appts.push({id:"a"+Date.now(),start:t,psy:p.id,client:cl.id,type:"ini",mode:md,room:md==="site"?roomFor(p.id,t):"",status:"geplant",doc:"",isNew:true,pay,payState:"offen"});r.status="gebucht";r.bookedText=fDT(t)+" bei "+p.name;S.inbox.forEach(x=>{if(x.ref&&x.ref.req===r.id)x.done=true;});dlg.close();render();r.mails=r.mails||[];composer({title:"Terminbestätigung",to:r,ctx:"req",tpl:r.age==="unter 18"?"conf_y":md==="online"?"conf_o":"confirm",vars:{psy:p.name,datum:fDay(t),datum_lang:dLong(t),zeit:fTime(t).replace(":",".")},log:r.mails});toast("Gebucht, Klient:in angelegt. Bitte Bestätigung prüfen und senden.");}},"Buchen und Bestätigung vorbereiten")]);
 }
 
 /* ---- clients: Suchmaske oben, lange Liste unten; Klick öffnet die Akte ---- */
@@ -1495,6 +1498,9 @@ function seedInbox(w){
   add({kind:"message",to:"le",t:at(w,11,0),title:"Feedback-Anfrage gesendet: Jana Kurz",text:"Nach dem Erstgespräch wurde die Feedback-Umfrage automatisch per E-Mail verschickt.",ref:{client:"jana"},read:true});
   add({kind:"message",to:"mk",t:at(addDays(w,1),12,0),title:"Einverständnis erhalten: Mia Muster",text:"Die erziehungsberechtigte Person hat die Einverständniserklärung bestätigt und unterschrieben hochgeladen.",ref:{client:"mia"}});
   return L.sort((a,b)=>b.t-a.t);}
+function needsAction(m){if(m.subj!==undefined)return m.folder==="inbox"&&!m.answered;const rq=m.ref&&m.ref.req&&S.requests.find(x=>x.id===m.ref.req);
+  if(m.kind==="request")return !m.done&&(!rq||["neu","in Bearbeitung"].includes(rq.status));if(m.kind==="task")return !m.done;if(m.fb==="hold")return !m.done;return false;}
+function actBadge(m){const a=needsAction(m);return h("span",{class:"actb "+(a?"req":"none")},a?"Action required":"No action required");}
 function seedMails(w){const L=[];let n=0;const C=id=>S.clients.find(c=>c.id===id);
   const me=id=>({name:P(id).name,email:mailOf(id)}),prax={name:"Balancd Praxis",email:S.practice.email},cl=id=>({name:C(id).name,email:C(id).email});
   const add=o=>{const m={id:"ml"+(++n),read:false,att:[],cc:[],client:null,...o};m.thread=m.thread||m.id;L.push(m);return m;};
@@ -1531,7 +1537,7 @@ function inboxView(){
   const list=h("div",{class:"list mlist"},h("div",{style:"padding:10px 10px 0"},search),chips,
     ...(rows.length?rows.map(m=>{const c=m.client&&S.clients.find(x=>x.id===m.client);
       return h("button",{type:"button",class:"li mrow"+(m.read?"":" unread"),"aria-current":cur&&cur.id===m.id?"true":null,onclick:()=>{if(F==="drafts"){openDraft(m);return;}m.read=true;S.mOpen=m.id;render();}},
-        h("div",{class:"row",style:"gap:6px;flex-wrap:nowrap"},h("b",{class:"mfrom"},who(m)),h("span",{class:"spacer"}),m.att.length?h("span",{title:m.att.length+" Anhang"},"📎"):null,h("span",{class:"small muted",style:"white-space:nowrap"},sameDay(m.t,NOW)?fTime(m.t):fDay(m.t))),
+        h("div",{class:"row",style:"gap:6px;flex-wrap:nowrap"},h("span",{class:"ibtag ib-mail"},"E-Mail"),F==="inbox"?actBadge(m):null,h("b",{class:"mfrom"},who(m)),h("span",{class:"spacer"}),m.att.length?h("span",{title:m.att.length+" Anhang"},"📎"):null,h("span",{class:"small muted",style:"white-space:nowrap"},sameDay(m.t,NOW)?fTime(m.t):fDay(m.t))),
         h("span",{class:"msubj"},m.subj),h("span",{class:"small muted ibsnip"},m.body.replace(/\s+/g," ").slice(0,110)),
         c?h("span",{class:"pill",style:"align-self:flex-start;font-size:11px;padding:1px 7px"},"Akte: "+c.name):null);})
       :[h("p",{class:"muted",style:"padding:14px;margin:0"},q?"Keine Treffer.":"Keine E-Mails in diesem Ordner.")]));
@@ -1584,7 +1590,7 @@ function notifPane(){
   const chips=[["open","Alle offenen"],["unread","Ungelesen"],["booking","Direktbuchungen"]].concat(isAdmin()?[["request","Anfragen"],["task","Zur Freigabe"]]:[]).concat([["message","Mitteilungen"],["done","Erledigt"]]);
   const cnt=k=>all.filter(m=>!m.done&&(k==="open"||k==="unread"&&!m.read||m.kind===k)).length;
   const row=m=>{const[kl,kc]=IBK[m.kind];return h("button",{type:"button",class:"li ibrow"+(m.read?"":" unread"),"aria-current":cur&&cur.id===m.id?"true":null,onclick:()=>{m.read=true;S.ibOpen=m.id;render();}},
-    h("div",{class:"row",style:"gap:8px;flex-wrap:nowrap"},h("span",{class:"ibtag "+kc},kl),h("span",{class:"spacer"}),h("span",{class:"small muted",style:"white-space:nowrap"},fDay(m.t)+", "+fTime(m.t))),
+    h("div",{class:"row",style:"gap:6px;flex-wrap:nowrap"},h("span",{class:"ibtag "+kc},kl),actBadge(m),h("span",{class:"spacer"}),h("span",{class:"small muted",style:"white-space:nowrap"},fDay(m.t)+", "+fTime(m.t))),
     h("b",{class:"ibtitle"},m.title),h("span",{class:"small muted ibsnip"},m.text));};
   const listEl=h("div",{class:"list mlist"},h("div",{class:"row",style:"padding:10px 12px;border-bottom:1px solid var(--line);gap:6px"},...chips.map(([v,l])=>{const n=v==="done"?0:cnt(v);return h("button",{type:"button",class:"pill "+(F===v?"acc":""),style:"border:0;cursor:pointer",onclick:()=>{S.ibF=v;S.ibOpen=null;render();}},l+(n?" "+n:""));})),
     ...(list.length?list.map(row):[h("p",{class:"muted",style:"padding:14px;margin:0"},F==="done"?"Noch nichts erledigt.":"Keine Einträge.")]));
@@ -1594,7 +1600,10 @@ function ibDetail(m){
   const ap=r.appt?S.appts.find(a=>a.id===r.appt):null;const bl=r.block?S.blocks.find(b=>b.id===r.block):null;
   const done=()=>{m.done=true;S.ibOpen=null;render();toast("Erledigt.");};
   const acts=[];
-  if(m.kind==="request"&&rq)acts.push(h("button",{type:"button",class:"btn primary",onclick:()=>{S.view="req";S.openReq=rq.id;render();}},"Anfrage öffnen"),h("button",{type:"button",class:"btn",onclick:()=>{rq.mails=rq.mails||[];composer({to:rq,ctx:"req",tpl:rq.calls&&rq.calls.length?"nr_same":"free",vars:{psy:rq.pref!=="keine"?rq.pref:"Laura E."},log:rq.mails});}},"E-Mail schreiben"));
+  if(m.kind==="request"&&rq)return h("div",{class:"card col",style:"gap:12px"},h("div",{class:"row"},h("span",{class:"ibtag "+kc},kl),actBadge(m),h("span",{class:"spacer"}),h("span",{class:"small muted"},fDT(m.t))),
+    h("p",{class:"small muted",style:"margin:0"},"Anfrage direkt hier bearbeiten: Anruf notieren, Angaben ergänzen, Psycholog:in wählen und Termin buchen. Die Bestätigung wird danach mit Anrede, Psycholog:in, Datum, Zeit und GLN vorbereitet."),
+    reqView(rq.id),h("div",{class:"row",style:"border-top:1px solid var(--line2);padding-top:10px"},m.done?h("button",{type:"button",class:"btn",onclick:()=>{m.done=false;render();}},"Wieder öffnen"):h("button",{type:"button",class:"btn",onclick:done},"✓ Erledigt")));
+  if(false)acts.push(h("button",{type:"button",class:"btn primary",onclick:()=>{S.view="req";S.openReq=rq.id;render();}},"Anfrage öffnen"),h("button",{type:"button",class:"btn",onclick:()=>{rq.mails=rq.mails||[];composer({to:rq,ctx:"req",tpl:rq.calls&&rq.calls.length?"nr_same":"free",vars:{psy:rq.pref!=="keine"?rq.pref:"Laura E."},log:rq.mails});}},"E-Mail schreiben"));
   if(m.kind==="booking"&&ap)acts.push(h("button",{type:"button",class:"btn primary",onclick:()=>openAppt(ap.id)},"Termin öffnen"));
   if(m.kind==="booking"&&cl)acts.push(h("button",{type:"button",class:"btn",onclick:()=>composer({to:cl,ctx:"appt",tpl:ap&&ap.mode==="online"?"conf_o":cl.minor?"conf_y":"confirm",vars:ap?{datum:fDay(ap.start),datum_lang:dLong(ap.start),zeit:fTime(ap.start).replace(":","."),psy:P(ap.psy).name,ort:ap.mode==="online"?"online":"Balancd, Zürich"}:{},log:cl.mails})},"E-Mail an "+cl.name.split(" ")[0]));
   if(m.kind==="mail"&&cl)acts.push(h("button",{type:"button",class:"btn primary",onclick:()=>composer({title:"Antworten",to:cl,ctx:"client",tpl:"free",vars:{psy:P(cl.psy).name},subj:"Re: "+m.title.replace(/^E-Mail von [^:]+: /,""),log:cl.mails,onSend:()=>{m.done=true;}})},"Antworten"));
@@ -1604,8 +1613,8 @@ function ibDetail(m){
     h("button",{type:"button",class:"btn",onclick:()=>{m.done=true;m.fb="held";S.ibOpen=null;render();toast("Feedback-Anfrage zurückgehalten.");}},"Zurückhalten"));
   if(cl)acts.push(h("button",{type:"button",class:"btn ghost",onclick:()=>{S.view="cli";S.openClient=cl.id;render();}},"Klient:in öffnen ›"));
   return h("div",{class:"card col",style:"gap:12px"},
-    h("div",{class:"row"},h("span",{class:"ibtag "+kc},kl),h("span",{class:"spacer"}),h("span",{class:"small muted"},fDT(m.t))),
-    h("h2",{style:"font-size:19px"},m.title),
+    h("div",{class:"row"},h("span",{class:"ibtag "+kc},kl),actBadge(m),h("span",{class:"spacer"}),h("span",{class:"small muted"},fDT(m.t))),
+    h("h2",{style:"font-size:19px"},m.title),m.kind==="booking"?h("div",{class:"small muted"},"Der Termin steht bereits im Kalender der Psycholog:in. Keine Aktion nötig."):null,
     h("p",{style:"margin:0;white-space:pre-wrap"},m.text),
     m.kind==="mail"?h("div",{class:"small muted"},m.to==="admin"?"Eingegangen im Praxis-Postfach ("+S.practice.email+") und automatisch der Klient:in zugeordnet.":"Eingegangen in Ihrem persönlichen Postfach ("+mailOf(m.to)+") und automatisch der Klient:in zugeordnet."):null,
     acts.length?h("div",{class:"row"},...acts):null,
@@ -1806,6 +1815,7 @@ function profileView(){
         F("Schwerpunkte",multiSel(O.spec,pr.spec,"Schwerpunkte")),
         F("Sprachen",multiSel(O.lang,pr.lang,"Sprachen")),
         F("Erfahrung mit",multiSel(O.ages,pr.ages,"Erfahrung mit")),
+        F("Finanzierung",h("div",{class:"col",style:"gap:4px"},multiSel(["Selbstzahlung","Zusatzversicherung"],pr.fin||(pr.fin=["Selbstzahlung","Zusatzversicherung"]),"Finanzierung"),h("label",{class:"radio small muted"},h("input",{type:"checkbox",disabled:true}),"Grundversicherung (nur für Psychotherapeut:innen, später)")),"Für Psycholog:innen vorausgewählt."),
         F("Zusatzversicherungen",multiSel(O.ins,pr.ins,"Zusatzversicherungen"),"Alle vorausgewählt. Abwählen, falls eine Versicherung Sie nicht anerkennt."))),
     h("div",{class:"row"},h("button",{type:"button",class:"btn primary",onclick:()=>{pr.about=about.value;if(!pr.lang.length){toast("Bitte mindestens eine Sprache wählen.");return;}
       p.spec=pr.spec.join(", ");p.lang=pr.lang.join(", ");p.minors=pr.minors;p.gln=pr.gln;pr.changed={t:new Date(NOW),by:P(S.me).name+(isAdmin()?" (Admin)":"")};
@@ -2085,7 +2095,7 @@ Object.assign(EN,{"Klicken = Standardtermin 50 Min. + 10 Min. Puffer · aufziehe
 "Wie geplant senden":"Send as planned","Zurückhalten":"Hold back","Tarifcode":"Tariff code","Modalität":"Modality","Minderjährige":"Minors","Name EN":"Name EN","vor Ort + online":"in person + online","nur vor Ort":"in person only","nur online":"online only","verfügbar vor Ort":"available in person","verfügbar online":"available online","Puffer":"Buffer",
 "Person einladen":"Invite person","E-Mail-Postfach":"Mailbox","Treuhand (Abrechnung)":"Fiduciary (read only)","Akte bearbeiten: ":"Edit record: ","Rechnungsempfänger":"Billing recipient","Gutschrift erstellen":"Create credit note","Betrag (CHF, ganz oder teilweise)":"Amount (CHF, full or partial)","Grund":"Reason"});
 TYPES0.forEach(t=>{if(t.en)EN[t.name]=t.en;});
-Object.assign(EN,{"nur online verfügbar":"online only","nicht verfügbar":"not available","Profil bearbeiten":"Edit profile","Kalender ›":"Calendar ›","‹ Team":"‹ Team","Externe Zugänge":"External access","Max. pro Tag":"Max. per day","Vor Ort":"In person","Zuletzt geändert: ":"Last changed: ","Benachrichtigungen":"Notifications","Gesendet":"Sent","Entwürfe":"Drafts","Archiv":"Archive","Papierkorb":"Trash","Alle":"All","Ungelesen":"Unread","Mit Anhang":"With attachment","↩ Antworten":"↩ Reply","↩↩ Allen antworten":"↩↩ Reply all","↪ Weiterleiten":"↪ Forward","Archivieren":"Archive","Löschen":"Delete","Wiederherstellen":"Restore","Ansehen":"View","In Akte":"To record","✓ in Akte":"✓ in record","Zuordnung lösen":"Unassign","Klient:in zuordnen …":"Assign to client …","Keiner Klient:in zugeordnet.":"Not assigned to a client.","Zugeordnet:":"Assigned:","📎 Anhang hinzufügen":"📎 Add attachment","Aus der Akte …":"From the record …","Als Entwurf speichern":"Save as draft","Senden":"Send","Von":"From","An":"To","Betreff":"Subject","Vorlage":"Template","Neue E-Mail":"New email","E-Mails & Dokumente":"Emails & documents","Datei hochladen":"Upload file","Herunterladen":"Download","Schliessen":"Close","Wann":"When","Art":"Type","Wiederh.":"Repeat","Psych.":"Psych.","Zahlungslink (Karte / TWINT)":"Payment link (card / TWINT)"});
+Object.assign(EN,{"Finanzierung":"Financing","Selbstzahlung":"Self-payment","Für Psycholog:innen vorausgewählt.":"Preselected for psychologists.","nur online verfügbar":"online only","nicht verfügbar":"not available","Profil bearbeiten":"Edit profile","Kalender ›":"Calendar ›","‹ Team":"‹ Team","Externe Zugänge":"External access","Max. pro Tag":"Max. per day","Vor Ort":"In person","Zuletzt geändert: ":"Last changed: ","Benachrichtigungen":"Notifications","Gesendet":"Sent","Entwürfe":"Drafts","Archiv":"Archive","Papierkorb":"Trash","Alle":"All","Ungelesen":"Unread","Mit Anhang":"With attachment","↩ Antworten":"↩ Reply","↩↩ Allen antworten":"↩↩ Reply all","↪ Weiterleiten":"↪ Forward","Archivieren":"Archive","Löschen":"Delete","Wiederherstellen":"Restore","Ansehen":"View","In Akte":"To record","✓ in Akte":"✓ in record","Zuordnung lösen":"Unassign","Klient:in zuordnen …":"Assign to client …","Keiner Klient:in zugeordnet.":"Not assigned to a client.","Zugeordnet:":"Assigned:","📎 Anhang hinzufügen":"📎 Add attachment","Aus der Akte …":"From the record …","Als Entwurf speichern":"Save as draft","Senden":"Send","Von":"From","An":"To","Betreff":"Subject","Vorlage":"Template","Neue E-Mail":"New email","E-Mails & Dokumente":"Emails & documents","Datei hochladen":"Upload file","Herunterladen":"Download","Schliessen":"Close","Wann":"When","Art":"Type","Wiederh.":"Repeat","Psych.":"Psych.","Zahlungslink (Karte / TWINT)":"Payment link (card / TWINT)"});
 /* ============ render ============ */
 function render(){
   drawBar();const app=document.getElementById("app");app.textContent="";document.querySelector(".pop")?.remove();
