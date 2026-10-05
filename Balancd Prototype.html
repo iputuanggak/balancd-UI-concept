@@ -480,6 +480,7 @@ function seed(){
     A(addDays(w,1),13,0,"jf","kim","ind","online",{status:"stattgefunden"}),
     A(addDays(w,1),15,0,"le","graf","cpl","site",{doc:"Kommunikationsmuster, Übung Zwiegespräch."}),
     A(addDays(w,2),9,0,"mk","luca","ind","site",{status:"stattgefunden",doc:"Übergang neue Stelle."}),
+    A(addDays(pw,4),11,0,"jf","kim","ind","online"),
     A(addDays(w,2),11,0,"le","kim","ini","online"),
     A(addDays(w,2),15,0,"le","alex","ind","site"),
     A(addDays(w,3),9,0,"jf","jana","ind","site"),
@@ -489,7 +490,7 @@ function seed(){
     A(addDays(w,7),9,0,"le","alex","ind","site"),
   ];
   for(let i=0;i<6;i++)appts.push(A(addDays(w,14+14*i-6),14,0,"le","lea","ind","site",{seriesId:"s-lea",rule:{freq:"weekly",interval:2,end:"count",count:6}}));
-  appts.forEach(a=>{if(a.status==="stattgefunden"&&a.client&&!a.actual)a.actual=T(a.type).dur+(a.client==="lea"?5:0);if(a.type==="ini"){a.pay=a.client==="kim"?"online":"link";a.payState=a.client==="mia"?"offen":"bezahlt";}});
+  appts.forEach(a=>{if(a.status==="stattgefunden"&&a.client&&!a.actual)a.actual=T(a.type).dur+(a.client==="lea"?5:0);if(a.client==="alex"&&sameDay(a.start,w))a.actual=1;if(a.type==="ini"){a.pay=a.client==="kim"?"online":"link";a.payState=a.client==="mia"?"offen":"bezahlt";}});
   const blocks=[...occurrencesSeed(w).map((d,i)=>({id:"bm"+i,psy:"le",start:at(d,12),dur:60,kind:"blocker",label:"Mittag",seriesId:"s-mittag",rule:{freq:"weekday",end:"count",count:40}})),
     {id:"b3",psy:"le",start:at(addDays(w,4),8),dur:600,kind:"absence",label:"Weiterbildung",state:"beantragt",days:3}];
   const requests=[
@@ -514,7 +515,8 @@ function seed(){
      clients,appts,blocks,requests,invoices,tpl:TPL.map(t=>({...t})),
      c:{screen:"start",tab:"book",who:"adult",modeSel:"site",psy:null,day:null,slot:null,holdUntil:null,form:{},checks:[false,false,false],pay:"twint",guardian:null,booked:null},
      fid:[{name:"Treuhand Muster AG"}],openAppt:null,openReq:"r1",openClient:null,rules:defaultRules(),rooms:defaultRooms(),reasons:defaultReasons(),avail:defaultAvail(),profile:defaultProfiles(),practice:{address:"am Hirschengraben 28 in 8001 Zürich",email:"hoi@balancd.ch",web:"www.balancd.ch",phone:"+41 44 000 00 00"},clientTab:"hist",invTab:"draft",invSel:new Set(["i1","i2","i3","i4","i5"]),statRange:"month",setTab:"types"};
-  S.inbox=seedInbox(w);S.mails=seedMails(w);
+  S.perm={le:"Master-Admin",jf:"Psycholog:in",mk:"Admin",sm:"Psycholog:in"};S.permOff={};S.permLog=[];
+  S.inbox=seedInbox(w);S.mails=seedMails(w);S.chkDone=false;
 }
 seed();
 
@@ -744,7 +746,16 @@ function guardianView(){
 }
 
 /* ============ TEAM VIEW ============ */
-const isAdmin=()=>S.role==="admin";
+const isAdmin=()=>S.role==="admin"||S.role==="master";
+const isMaster=()=>S.role==="master";
+/* NEW-33: Plausibilität der Minuten */
+const implaus=(a,m)=>{if(!a.client||a.type==="int"||T(a.type).fixed)return false;const x=m!==undefined?m:a.actual;if(m===undefined&&(a.status!=="stattgefunden"||a.plOk))return false;return x<S.rules.minMins||Math.abs(x-dur(a))*100/dur(a)>S.rules.maxDev;};
+/* NEW-32: offene Termine vor dem Rechnungslauf nachfragen */
+function chkPush(only){S.appts.filter(a=>(!only||a.psy===only)&&(toClose(a)||implaus(a))).forEach(a=>{const cl=S.clients.find(c=>c.id===a.client);const open=toClose(a);
+  S.inbox=S.inbox.filter(m=>!(m.chk&&m.ref.appt===a.id&&!m.done));
+  ibPush({kind:"message",to:a.psy,chk:open?"open":"dur",title:open?"Hat dieser Termin stattgefunden? "+cl.name+", "+fDT(a.start):"Dauer prüfen: "+cl.name+", "+fDay(a.start)+" (nur "+a.actual+" Min.)",
+    text:open?"Der Termin ist noch nicht abgeschlossen. Die Monatsrechnungen werden Ende Monat erstellt; nicht abgeschlossene Termine werden nicht verrechnet. Bitte bestätigen, ob der Termin stattgefunden hat. Die Nachfrage wird täglich wiederholt, bis sie beantwortet ist."
+      :"Für diesen Termin sind nur "+a.actual+" Min. erfasst (Standard "+dur(a)+" Min.). Wie viele Minuten hat der Termin tatsächlich gedauert? Bitte die korrekte Zeit erfassen, damit er richtig verrechnet wird. Das gilt auch für Leistungen in Abwesenheit der Klient:in.",ref:{appt:a.id,client:a.client}});});}
 const isClosed=a=>["stattgefunden","nicht erschienen","abgesagt"].includes(a.status);
 const toClose=a=>a.client&&a.type!=="int"&&a.status==="geplant"&&new Date(a.start.getTime()+dur(a)*60000)<NOW;
 const myClients=()=>(isAdmin()||S.role==="fid")?S.clients:S.clients.filter(c=>c.psy===S.me||S.appts.some(a=>a.client===c.id&&a.psy===S.me));
@@ -752,19 +763,19 @@ const canEdit=psy=>S.role!=="fid"&&(isAdmin()||psy===S.me);
 const isFid=()=>S.role==="fid",seesAll=()=>isAdmin()||S.role==="fid";
 function teamView(){
   const openReq=S.requests.filter(r=>["neu","in Bearbeitung"].includes(r.status)).length;
-  const navs=S.role==="fid"?[["cal","Kalender"],["cli","Klient:innen"],["inv","Rechnungen"],["stat","Statistik"],["hours","Stundenrapport"]]:isAdmin()?[["cal","Kalender"],["inbox","Posteingang",ibUnread()],["req","Anfragen",openReq],["cli","Klient:innen"],["inv","Rechnungen"],["stat","Statistik"],["set","Einstellungen"]]
+  const navs=S.role==="fid"?[["cal","Kalender"],["cli","Klient:innen"],["inv","Rechnungen"],["stat","Statistik"],["hours","Stundenrapport"]]:isAdmin()?[["cal","Kalender"],["inbox","Posteingang",ibUnread()],["req","Anfragen",openReq],["cli","Klient:innen"],["inv","Rechnungen"],["stat","Statistik"]].concat(isMaster()?[["acc","Buchhaltung"]]:[]).concat([["set","Einstellungen"]])
     :[["cal","Kalender"],["inbox","Posteingang",ibUnread()],["cli","Klient:innen"],["inv","Rechnungen"],["stat","Meine Zahlen"],["pay","Lohnabrechnungen"],["set","Mein Profil"]];
   if(!navs.some(n=>n[0]===S.view))S.view=navs[0][0];const fid=S.role==="fid";
   return h("div",{class:"app"},
     h("nav",{class:"side","aria-label":"Hauptnavigation"},h("img",{src:LOGO,alt:"Balancd"}),...navs.map(([v,l,n])=>h("button",{type:"button",class:"nav","aria-current":S.view===v?"page":null,onclick:()=>{S.view=v;S.openAppt=null;render();}},l,n?h("span",{class:"n"},n):null))),
     h("div",{class:"main"},
       h("div",{class:"top"},h("input",{type:"search",placeholder:"Klient:in suchen","aria-label":"Klient:in suchen",onkeydown:e=>{if(e.key==="Enter"){const q=e.target.value.toLowerCase();const c=myClients().find(x=>x.name.toLowerCase().includes(q));if(c){S.view="cli";S.openClient=c.id;render();}else toast("Keine Klient:in gefunden");}}}),
-        h("span",{class:"rolehint"},fid?"Treuhand: Abrechnung und Lohn: alle Klient:innen mit Stammdaten (ohne Notizen), Rechnungen, Kalender (nur ansehen), Statistik, Stundenrapport":isAdmin()?"Admin: ganzes Team, Anfragen, Auswertungen, Freigaben, Einstellungen":"Psycholog:in: Kalender, eigene Klient:innen, Rechnungen, Zahlen und Lohn"),
+        h("span",{class:"rolehint"},fid?"Treuhand: Abrechnung und Lohn: alle Klient:innen mit Stammdaten (ohne Notizen), Rechnungen, Kalender (nur ansehen), Statistik, Stundenrapport":isMaster()?"Master-Admin: alles wie Admin, dazu Rollen und Rechte des Teams und die Buchhaltung":isAdmin()?"Admin: ganzes Team, Anfragen, Auswertungen, Freigaben, Einstellungen":"Psycholog:in: Kalender, eigene Klient:innen, Rechnungen, Zahlen und Lohn"),
         h("span",{class:"spacer"}),
         fid?null:h("button",{type:"button",class:"btn primary",onclick:()=>{S.view="cal";render();openQuick({start:at(addDays(calAnchor(),1),14),psy:isAdmin()&&S.calPsy!=="all"?S.calPsy:S.me});}},"+ Neuer Termin"),
-        h("div",{class:"role",role:"group","aria-label":"Ansicht"},h("button",{type:"button","aria-pressed":String(S.role==="psy"),onclick:()=>{S.role="psy";if(S.calPsy==="all")S.calPsy=S.me;render();}},"Psycholog:in"),h("button",{type:"button","aria-pressed":String(isAdmin()),onclick:()=>{S.role="admin";render();}},"Admin"),h("button",{type:"button","aria-pressed":String(S.role==="fid"),onclick:()=>{S.role="fid";S.openAppt=null;S.calPsy="all";S.view="cal";render();}},"Treuhand")),
+        h("div",{class:"role",role:"group","aria-label":"Ansicht"},h("button",{type:"button","aria-pressed":String(S.role==="psy"),onclick:()=>{S.role="psy";if(S.calPsy==="all")S.calPsy=S.me;render();}},"Psycholog:in"),h("button",{type:"button","aria-pressed":String(S.role==="admin"),onclick:()=>{S.role="admin";render();}},"Admin"),h("button",{type:"button","aria-pressed":String(isMaster()),onclick:()=>{S.role="master";render();}},"Master-Admin"),h("button",{type:"button","aria-pressed":String(S.role==="fid"),onclick:()=>{S.role="fid";S.openAppt=null;S.calPsy="all";S.view="cal";render();}},"Treuhand")),
         langSw(),h("span",{class:"avatar",style:"width:34px;height:34px;font-size:13px"},"LE")),
-      h("div",{class:"content"},({cal:calView,inbox:inboxView,req:reqView,cli:cliView,inv:invView,stat:statView,pay:payView,set:setView,hours:hoursView})[S.view]())));
+      h("div",{class:"content"},({cal:calView,inbox:inboxView,req:reqView,cli:cliView,inv:invView,stat:statView,pay:payView,set:setView,hours:hoursView,acc:accView})[S.view]())));
 }
 
 /* ---- calendar (wie Google Kalender) ---- */
@@ -1162,7 +1173,7 @@ function apptDrawer(){
     const pk=cl&&cl.pkg&&cl.pkg.left>0;const extra=Math.max(0,mins-dur(a));
     calc.append(h("b",null,mins+" Min. × "+chf(RATE)+" = "+chf(cost(mins))),h("br"),
       h("span",{class:"muted"},pk?"Paket deckt "+dur(a)+" Min. "+(extra?"· "+extra+" Min. Überzeit ("+chf(cost(extra))+") kommen auf die Monatsrechnung.":"· nichts auf der Monatsrechnung."):"Keine Einzelrechnung – kommt auf die Monatsrechnung Ende Monat."));};
-  const oc=h("div",{class:"row"}),durRow=h("div");
+  let warned=false;const oc=h("div",{class:"row"}),durRow=h("div");
   const minIn=h("input",{type:"number",min:"1",step:"1",value:mins,"aria-label":"Tatsächliche Dauer in Minuten",oninput:e=>{mins=Math.max(1,Math.round(+e.target.value)||0);drawCalc();}});
   const bump=d=>{mins=Math.max(1,mins+d);minIn.value=mins;drawCalc();};
   const stepper=h("div",{class:"stepper"},h("button",{type:"button","aria-label":"5 Minuten weniger",onclick:()=>bump(-5)},"−5"),h("button",{type:"button","aria-label":"1 Minute weniger",onclick:()=>bump(-1)},"−1"),minIn,h("button",{type:"button","aria-label":"1 Minute mehr",onclick:()=>bump(1)},"+1"),h("button",{type:"button","aria-label":"5 Minuten mehr",onclick:()=>bump(5)},"+5"));
@@ -1190,7 +1201,9 @@ function apptDrawer(){
       h("div",{class:"small muted"},"Kommt auf die Monatsrechnung. Bis zur Freigabe der Rechnung korrigierbar."),
       h("div",null,h("button",{type:"button",class:"btn",onclick:()=>{a.editing=true;render();}},"Korrigieren"))):null;
   const complete=doneCard?doneCard:cl&&a.type!=="int"&&own?h("div",{class:"card col",style:"gap:10px"},h("h2",{style:"font-size:17px"},"Sitzung abschliessen"),oc,durRow,calc,
-    h("button",{type:"button",class:"btn primary",onclick:()=>{a.status=outcome==="geplant"?"stattgefunden":outcome;a.actual=mins;a.editing=false;if(cl&&cl.pkg&&a.status==="stattgefunden"&&!a.charged){cl.pkg.left=Math.max(0,cl.pkg.left-1);a.charged=true;}a.doc=doc.value;feedbackCheck(a,cl);close();
+    h("button",{type:"button",class:"btn primary",onclick:e=>{const st=outcome==="geplant"?"stattgefunden":outcome;
+      if(st==="stattgefunden"&&!warned&&implaus(a,mins)){warned=true;e.target.textContent="Trotzdem abschliessen";calc.append(h("div",{style:"margin-top:8px;color:var(--warn);font-weight:600"},"Nur "+mins+" Min. – stimmt das? "+(mins<S.rules.minMins?"Das ist unter der Mindestdauer von "+S.rules.minMins+" Min.":"Das weicht stark von der Standarddauer ("+dur(a)+" Min.) ab.")+" Bitte die tatsächliche Dauer erfassen oder bestätigen."));return;}
+      a.status=st;a.actual=mins;a.plOk=false;a.editing=false;if(cl&&cl.pkg&&a.status==="stattgefunden"&&!a.charged){cl.pkg.left=Math.max(0,cl.pkg.left-1);a.charged=true;}a.doc=doc.value;feedbackCheck(a,cl);close();
       toast(a.status==="stattgefunden"?(t.fixed?"Abgeschlossen (Fixpreis).":"Abgeschlossen: "+mins+" Min. kommen auf die Monatsrechnung."):"Abgeschlossen: "+a.status+", wird verrechnet.");}},"Abschliessen")):null;
   const docCol=own?h("div",{class:"col"},
       h("div",{class:"card col",style:"gap:10px"},h("div",{class:"row"},h("h2",{style:"font-size:17px"},"Dokumentation"),h("span",{class:"spacer"}),h("span",{class:"small muted"},"Nie für Klient:innen sichtbar")),doc,
@@ -1350,11 +1363,47 @@ function invView(){
       isFid()?h("button",{type:"button",class:"btn ghost small",onclick:()=>toast("Download Rechnung "+(cl?cl.name:"")+" "+i.month+" als PDF (Demo).")},"PDF ⤓"):(!isAdmin()&&S.invTab==="due"&&cl)?h("button",{type:"button",class:"btn ghost small",onclick:()=>composer({to:cl,ctx:"client",tpl:"free",vars:{},log:cl.mails})},"E-Mail"):null));});
   return h("div",{class:"col"},h("div",{class:"ptitle"},h("h1",null,"Rechnungen"),h("span",{class:"spacer"}),seesAll()?h("button",{type:"button",class:"btn",onclick:()=>toast("Export aller Rechnungen als Excel/CSV (Demo).")},"Excel / CSV ⤓"):null,
       h("div",{class:"tabs",role:"tablist",style:"border:0"},...tabsDef.map(([v,l])=>h("button",{type:"button",role:"tab","aria-selected":String(S.invTab===v),onclick:()=>{S.invTab=v;render();}},l)))),kp,
+    S.invTab==="draft"?preCheck():null,
     S.invTab==="draft"?h("div",{class:"card row"},h("div",{class:"col",style:"gap:2px;flex:1"},h("b",null,"Monatsrechnungen automatisch erstellt"),h("span",{class:"small muted"},"Nach der Freigabe gehen Rechnung und Rückforderungsbeleg per E-Mail an die Klient:innen.")),
       h("button",{type:"button",class:"btn primary",onclick:()=>{let n=0;S.invoices.forEach(i=>{if(i.status==="Entwurf"&&S.invSel.has(i.id)){i.status="offen";n++;}});render();toast(n+" Rechnungen freigegeben und gesendet.");}},"Ausgewählte freigeben und senden")):null,
     h("div",{class:"tblwrap"},h("table",{class:"tbl"},h("thead",null,h("tr",null,S.invTab==="draft"?h("th",null,""):null,h("th",null,"Klient:in"),h("th",null,"Psycholog:in"),h("th",null,"Monat"),h("th",null,"Positionen"),h("th",{class:"num"},"Betrag"),h("th",null,"Status"),h("th",null,""))),h("tbody",null,...rows))),
     h("p",{class:"small muted",style:"margin:0"},(isFid()?"Treuhand: Abrechnung wie die Administration, mit Download. ":isAdmin()?"":"Nur Rechnungen Ihrer eigenen Klient:innen, nur ansehen. ")+"Zahlungen kommen automatisch aus Bexio. Mahnungen: 1. nach 30 Tagen (CHF 5.–), 2. nach weiteren 14 Tagen (CHF 10.–), danach Buchungssperre."));
 }
+
+/* NEW-32 / NEW-33: Prüfung vor der Freigabe */
+function preCheck(){
+  const issues=S.appts.filter(a=>toClose(a)||implaus(a));if(!issues.length)return h("div",{class:"card small",style:"border-color:var(--ok);background:var(--ok-bg)"},"✓ Alle Termine des Monats sind abgeschlossen und plausibel.");
+  const by={};issues.forEach(a=>(by[a.psy]=by[a.psy]||[]).push(a));
+  return h("div",{class:"card col",style:"gap:10px;border-color:var(--warn);background:var(--warn-bg)"},
+    h("b",{style:"color:var(--warn)"},"⚠ Vor der Freigabe prüfen: "+issues.length+" Termin"+(issues.length>1?"e":"")),
+    h("span",{class:"small"},"Nicht abgeschlossene Termine werden nicht verrechnet. Die Teammitglieder wurden im Posteingang gefragt; die Nachfrage wird täglich wiederholt."),
+    ...Object.keys(by).map(pid=>h("div",{class:"col",style:"gap:4px"},h("div",{class:"row"},h("b",null,P(pid).name),h("span",{class:"small muted"},by[pid].length+" offen"),h("span",{class:"spacer"}),
+        isFid()?null:h("button",{type:"button",class:"btn small",onclick:()=>{chkPush(pid);toast("Erinnerung an "+P(pid).name+" gesendet.");}},"Erinnerung senden")),
+      ...by[pid].map(a=>{const cl=S.clients.find(c=>c.id===a.client);return h("div",{class:"row small",style:"gap:8px"},h("span",null,fDT(a.start)),h("span",null,cl?cl.name:""),h("span",{class:"pill warn"},toClose(a)?"Abschluss offen":"nur "+a.actual+" Min."),
+        h("button",{type:"button",class:"btn ghost small",onclick:()=>openAppt(a.id)},"Öffnen ›"));}))));}
+/* NEW-35: Buchhaltung nur für Master-Admins */
+function accView(){
+  const item=(t,d,b)=>h("div",{class:"card col",style:"gap:6px"},h("b",null,t),h("span",{class:"small muted"},d),h("div",null,h("button",{type:"button",class:"btn",onclick:()=>toast(b+" (Demo).")},b)));
+  return h("div",{class:"col"},h("div",{class:"ptitle"},h("h1",null,"Buchhaltung"),h("span",{class:"spacer"}),h("span",{class:"pill acc"},"nur Master-Admin")),
+    h("p",{class:"small muted",style:"margin:0"},"Alle Finanzen über das Invoicing hinaus. Nur Master-Admins sehen diesen Bereich; Admins, Psycholog:innen und Treuhand sehen ihn nicht."),
+    h("div",{class:"g2"},item("Jahresabschluss","Erfolgsrechnung und Bilanz pro Geschäftsjahr.","Jahresabschluss öffnen"),item("Unterlagen Steuererklärung","Alle Unterlagen für die Steuererklärung, als PDF herunterladbar.","Unterlagen herunterladen"),
+      item("Finanzübersicht","Einnahmen, Ausgaben, Löhne und Liquidität über das Invoicing hinaus.","Übersicht öffnen"),item("Belege und Ausgaben","Belege erfassen und Ausgaben verbuchen.","Belege öffnen")),
+    h("p",{class:"small muted",style:"margin:0"},"Die Buchhaltung selbst (Belege mit KI erkennen, Jahresabschluss vorbereiten) folgt in einer späteren Phase. Rechnungen, Freigabe, Gutschriften und Mahnliste bleiben bei den Admins."));}
+/* NEW-35: Rollen und Rechte, nur Master-Admin ändert */
+const AREAS_ADM=["Kalender","Posteingang","Anfragen","Klient:innen","Rechnungen","Statistik","Einstellungen"];
+const AREAS={"Master-Admin":AREAS_ADM.concat(["Buchhaltung"]),"Admin":AREAS_ADM,"Psycholog:in":["Kalender","Posteingang","Klient:innen","Rechnungen","Meine Zahlen","Lohnabrechnungen","Mein Profil"],"Treuhand":["Kalender","Klient:innen","Rechnungen","Statistik","Stundenrapport"]};
+function permCard(){
+  const m=isMaster();const people=PSY.map(p=>({id:p.id,name:p.name})).concat(S.fid.map((f,i)=>({id:"fid"+i,name:f.name,fid:true})));
+  const roleOf=x=>x.fid?"Treuhand":S.perm[x.id]||"Psycholog:in";
+  const log=(x,what)=>{S.permLog.unshift({t:new Date(NOW),by:P(S.me).name,what:x.name+": "+what});};
+  const row=x=>{const r=roleOf(x);const off=S.permOff[x.id]||[];
+    const sel=m&&!x.fid?h("select",{style:"border:1px solid var(--line);border-radius:9px;padding:6px;background:var(--bg)",onchange:e=>{const v=e.target.value;if(r==="Master-Admin"&&v!=="Master-Admin"&&Object.values(S.perm).filter(y=>y==="Master-Admin").length<2){toast("Es braucht immer mindestens eine Master-Admin.");render();return;}S.perm[x.id]=v;log(x,"Rolle "+r+" → "+v);render();toast("Rolle geändert.");}},...["Master-Admin","Admin","Psycholog:in"].map(v=>h("option",{selected:v===r},v))):h("span",{class:"pill"},r);
+    return h("tr",null,h("td",null,h("b",null,x.name)),h("td",null,sel),h("td",null,h("div",{class:"row",style:"gap:4px"},...AREAS[r].map(a=>{const on=!off.includes(a);
+      return h("button",{type:"button",class:"pill "+(on?"ok":""),style:"border:0;font-size:12px;"+(m?"cursor:pointer":"cursor:default;opacity:.85"),disabled:!m,"aria-pressed":String(on),onclick:()=>{S.permOff[x.id]=on?off.concat(a):off.filter(y=>y!==a);log(x,a+(on?" ausgeschaltet":" eingeschaltet"));render();}},(on?"✓ ":"")+a);}))));};
+  return h("div",{class:"card col",style:"gap:10px"},h("div",{class:"row"},h("b",null,"Rollen und Rechte"),h("span",{class:"spacer"}),m?h("span",{class:"pill acc"},"Master-Admin"):h("span",{class:"small muted"},"Nur Master-Admins können Rollen und Rechte ändern.")),
+    h("div",{class:"tblwrap"},h("table",{class:"tbl"},h("thead",null,h("tr",null,h("th",null,"Person"),h("th",null,"Rolle"),h("th",null,"Bereiche"))),h("tbody",null,...people.map(row)))),
+    h("span",{class:"small muted"},"Die Buchhaltung (Jahresabschluss, Steuererklärung, Finanzen über das Invoicing hinaus) sehen nur Master-Admins. Es gibt immer mindestens eine Master-Admin."),
+    S.permLog.length?h("details",{class:"hist"},h("summary",null,"Änderungsverlauf ("+S.permLog.length+")"),...S.permLog.map(l=>h("div",{class:"small"},fDT(l.t)+" · "+l.by+" · "+l.what))):null);}
 
 /* ---- statistics ---- */
 function statView(){
@@ -1419,7 +1468,7 @@ const HALF=[["am","Vormittag"],["pm","Nachmittag"]];
 const WDAYS=[[1,"Montag"],[2,"Dienstag"],[3,"Mittwoch"],[4,"Donnerstag"],[5,"Freitag"]];
 function defaultRooms(){const plan={"Raum 1":{le:[1,2,4]},"Raum 2":{jf:[1,3,4]},"Raum 3":{mk:[1,2,3,5]},"Raum 4":{sm:[2,4]}};
   return Object.entries(plan).map(([name,o])=>{const slots={};for(const[psy,days]of Object.entries(o))days.forEach(d=>{slots[d+"am"]=psy;slots[d+"pm"]=psy;});if(name==="Raum 1")slots["4pm"]="";return {id:"r"+name.slice(-1),name,slots};});}
-function defaultRules(){return {cancelH:48,minDays:4,maxMonths:3,holdMin:30,holdMinorH:48,perDay:10,remindMailH:72,remindSmsH:24,payDays:30,dun1Days:30,dun1Fee:5,dun2Days:14,dun2Fee:10,absenceDays:3,amEnd:"12:30",fbAfter:10,fbPauseDays:30,fbMaxSessions:5};}
+function defaultRules(){return {cancelH:48,minDays:4,maxMonths:3,holdMin:30,holdMinorH:48,perDay:10,remindMailH:72,remindSmsH:24,payDays:30,dun1Days:30,dun1Fee:5,dun2Days:14,dun2Fee:10,absenceDays:3,amEnd:"12:30",chkDays:3,minMins:10,maxDev:50,fbAfter:10,fbPauseDays:30,fbMaxSessions:5};}
 function roomFor(psy,d){if(!S.rooms)return "";const key=(d.getDay())+(fTime(d)<(S.rules.amEnd||"12:30")?"am":"pm");const r=S.rooms.find(x=>x.slots[key]===psy);return r?r.name:"";}
 const inSty="border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--bg);min-width:0;font-size:14px";
 function numIn(val,on,w,step){return h("input",{type:"number",value:val,step:step||"1",min:"0",style:inSty+";width:"+(w||80)+"px",onchange:e=>on(+e.target.value)});}
@@ -1460,6 +1509,8 @@ function setRules(){const R=S.rules;
     line("Zahlungsfrist",n("payDays"),t("Tage")),
     line("1. Mahnung",t("nach"),n("dun1Days"),t("Tagen · Gebühr CHF"),n("dun1Fee")),
     line("2. Mahnung",t("nach weiteren"),n("dun2Days"),t("Tagen · Gebühr CHF"),n("dun2Fee"),t("· danach Buchungssperre")),
+    line("Prüfung vor dem Rechnungslauf",t("ab"),n("chkDays"),t("Arbeitstagen vor Monatsende: offene Termine nachfragen, täglich wiederholen")),
+    line("Plausibilität der Minuten",t("Hinweis unter"),n("minMins"),t("Min. oder bei mehr als"),n("maxDev"),t("% Abweichung von der Standarddauer (nicht bei Fixpreis)")),
     line("Abwesenheiten mit Freigabe",t("ab"),n("absenceDays"),t("Tagen")),
     line("Feedback-Umfrage",t("nach dem Erstgespräch, nach der"),n("fbAfter",60),t(". Sitzung und bei einer Pause von mehr als"),n("fbPauseDays",60),t("Tagen bei weniger als"),n("fbMaxSessions",60),t("Sitzungen")),
     line("Vormittag endet um",h("input",{type:"time",value:R.amEnd,style:inSty,onchange:e=>{R.amEnd=e.target.value||"12:30";saved();}}),t("(für die Raumzuteilung)"))))),
@@ -1502,7 +1553,7 @@ function seedInbox(w){
   add({kind:"message",to:"mk",t:at(addDays(w,1),12,0),title:"Einverständnis erhalten: Mia Muster",text:"Die erziehungsberechtigte Person hat die Einverständniserklärung bestätigt und unterschrieben hochgeladen.",ref:{client:"mia"}});
   return L.sort((a,b)=>b.t-a.t);}
 function needsAction(m){if(m.subj!==undefined)return m.folder==="inbox"&&!m.answered;const rq=m.ref&&m.ref.req&&S.requests.find(x=>x.id===m.ref.req);
-  if(m.kind==="request")return !m.done&&(!rq||["neu","in Bearbeitung"].includes(rq.status));if(m.kind==="task")return !m.done;if(m.fb==="hold")return !m.done;return false;}
+  if(m.kind==="request")return !m.done&&(!rq||["neu","in Bearbeitung"].includes(rq.status));if(m.kind==="task")return !m.done;if(m.fb==="hold"||m.chk)return !m.done;return false;}
 function actBadge(m){const a=needsAction(m);return h("span",{class:"actb "+(a?"req":"none")},a?"Action required":"No action required");}
 function seedMails(w){const L=[];let n=0;const C=id=>S.clients.find(c=>c.id===id);
   const me=id=>({name:P(id).name,email:mailOf(id)}),prax={name:"Balancd Praxis",email:S.practice.email},cl=id=>({name:C(id).name,email:C(id).email});
@@ -1612,6 +1663,10 @@ function ibDetail(m){
   if(m.kind==="mail"&&cl)acts.push(h("button",{type:"button",class:"btn primary",onclick:()=>composer({title:"Antworten",to:cl,ctx:"client",tpl:"free",vars:{psy:P(cl.psy).name},subj:"Re: "+m.title.replace(/^E-Mail von [^:]+: /,""),log:cl.mails,onSend:()=>{m.done=true;}})},"Antworten"));
   if(m.kind==="task"&&bl&&bl.state==="beantragt")acts.push(h("button",{type:"button",class:"btn primary",onclick:()=>{bl.state="freigegeben";ibPush({kind:"message",to:bl.psy,title:"Abwesenheit freigegeben: "+bl.label,text:bl.days+" Tage ab "+fDay(bl.start)+" wurden freigegeben.",ref:{}});m.done=true;S.ibOpen=null;render();toast("Freigegeben. "+P(bl.psy).name+" wird informiert.");}},"Freigeben"),
     h("button",{type:"button",class:"btn",onclick:()=>{S.blocks=S.blocks.filter(x=>x!==bl);ibPush({kind:"message",to:bl.psy,title:"Abwesenheit abgelehnt: "+bl.label,text:bl.days+" Tage ab "+fDay(bl.start)+" wurden nicht freigegeben. Bitte mit der Administration sprechen.",ref:{}});m.done=true;S.ibOpen=null;render();toast("Abgelehnt. "+P(bl.psy).name+" wird informiert.");}},"Ablehnen"));
+  if(m.chk==="open"&&ap&&!m.done){const fin=(st,txt)=>{if(st==="storniert"){ap.status="storniert";ap.cancelReason="Hat nicht stattgefunden";}else{ap.status=st;ap.actual=dur(ap);}m.done=true;S.ibOpen=null;render();toast(txt);};
+    if(toClose(ap))acts.push(h("button",{type:"button",class:"btn primary",onclick:()=>{m.done=true;openAppt(ap.id);}},"Hat stattgefunden – abschliessen"),h("button",{type:"button",class:"btn",onclick:()=>fin("nicht erschienen","Als «nicht erschienen» abgeschlossen, wird verrechnet.")},"Nicht erschienen"),
+      h("button",{type:"button",class:"btn",onclick:()=>fin("abgesagt","Als «Absage unter 48 h» abgeschlossen, wird verrechnet.")},"Absage unter 48 h"),h("button",{type:"button",class:"btn",onclick:()=>fin("storniert","Termin ohne Verrechnung abgesagt.")},"Hat nicht stattgefunden"));}
+  if(m.chk==="dur"&&ap&&!m.done)acts.push(h("button",{type:"button",class:"btn primary",onclick:()=>{ap.editing=true;m.done=true;openAppt(ap.id);}},"Dauer korrigieren"),h("button",{type:"button",class:"btn",onclick:()=>{ap.plOk=true;m.done=true;S.ibOpen=null;render();toast("Dauer bestätigt.");}},"Dauer stimmt"));
   if(m.fb==="hold"&&!m.done)acts.push(h("button",{type:"button",class:"btn primary",onclick:()=>{m.done=true;m.fb="sent";ibPush({kind:"message",to:m.to,title:"Feedback-Anfrage gesendet: "+(cl?cl.name:""),text:"Die Umfrage wurde automatisch per E-Mail verschickt.",ref:{client:r.client}});if(cl)cl.mails.push({t:new Date(NOW),subj:"Ihre Rückmeldung zu Balancd",tpl:"Feedback-Anfrage"});S.ibOpen=null;render();toast("Wird wie geplant gesendet.");}},"Wie geplant senden"),
     h("button",{type:"button",class:"btn",onclick:()=>{m.done=true;m.fb="held";S.ibOpen=null;render();toast("Feedback-Anfrage zurückgehalten.");}},"Zurückhalten"));
   if(cl)acts.push(h("button",{type:"button",class:"btn ghost",onclick:()=>{S.view="cli";S.openClient=cl.id;render();}},"Klient:in öffnen ›"));
@@ -1832,12 +1887,12 @@ function availSummary(psy){const av=availOf(psy);const site=[],on=[];
   return {site:site.join(", ")||"–",online:on.join(", ")||"–",perDay:av.perDay||S.rules.perDay};}
 function teamOverview(){
   const fn=h("input",{placeholder:"Vorname"}),ln=h("input",{placeholder:"Nachname"}),em=h("input",{placeholder:"E-Mail",type:"email"});[fn,ln,em].forEach(e=>e.style.cssText="border:1px solid var(--line);border-radius:9px;padding:9px;background:var(--bg);min-width:0;flex:1");
-  const rl=h("select",{style:"border:1px solid var(--line);border-radius:9px;padding:9px;background:var(--bg)"},...["Psycholog:in","Admin","Treuhand (Abrechnung)"].map(x=>h("option",null,x)));
+  const rl=h("select",{style:"border:1px solid var(--line);border-radius:9px;padding:9px;background:var(--bg)"},...["Psycholog:in","Admin","Master-Admin","Treuhand (Abrechnung)"].map(x=>h("option",null,x)));
   const chips=(arr,max)=>h("div",{class:"row",style:"gap:4px"},...arr.slice(0,max).map(x=>h("span",{class:"pill",style:"font-size:12px"},x)),arr.length>max?h("span",{class:"small muted"},"+"+(arr.length-max)):null);
   const card=p=>{const pr=S.profile[p.id],av=availSummary(p.id),O=PROF_OPTS();
     const kv=(k,v)=>[h("span",null,k),h("span",null,v)];
     return h("div",{class:"card col",style:"gap:10px"},
-      h("div",{class:"row",style:"flex-wrap:nowrap"},h("span",{class:"avatar",style:"width:48px;height:48px;font-size:17px"},p.ini),h("div",{class:"col",style:"gap:0;min-width:0;flex:1"},h("b",{style:"font-size:17px"},p.name),h("span",{class:"small muted"},(p.id==="le"?"Psycholog:in + Admin":"Psycholog:in")+" · "+mailOf(p.id))),h("span",{class:"pill ok"},"aktiv")),
+      h("div",{class:"row",style:"flex-wrap:nowrap"},h("span",{class:"avatar",style:"width:48px;height:48px;font-size:17px"},p.ini),h("div",{class:"col",style:"gap:0;min-width:0;flex:1"},h("b",{style:"font-size:17px"},p.name),h("span",{class:"small muted"},((S.perm[p.id]||"Psycholog:in")==="Psycholog:in"?"Psycholog:in":"Psycholog:in + "+S.perm[p.id])+" · "+mailOf(p.id))),h("span",{class:"pill ok"},"aktiv")),
       h("div",{class:"kv",style:"grid-template-columns:120px minmax(0,1fr);font-size:14px"},...kv("Titel",pr.title),...kv("GLN",pr.gln),...kv("Minderjährige",pr.minors?"ja":"nein"),...kv("Versicherung",pr.insDefault+" · "+pr.ins.length+" von "+O.ins.length+" Zusatzversicherungen"),
         ...kv("Vor Ort",av.site),...kv("Online",av.online),...kv("Max. pro Tag",String(av.perDay))),
       h("div",{class:"col",style:"gap:4px"},h("span",{class:"small muted"},"Schwerpunkte"),chips(pr.spec,4)),
@@ -1847,9 +1902,10 @@ function teamOverview(){
       h("div",{class:"row"},h("button",{type:"button",class:"btn primary",onclick:()=>{S.setTab="me";S.profPsy=p.id;render();window.scrollTo(0,0);}},"Profil bearbeiten"),h("button",{type:"button",class:"btn",onclick:()=>{S.setTab="avail";S.availPsy=p.id;render();window.scrollTo(0,0);}},"Verfügbarkeit"),h("button",{type:"button",class:"btn ghost",onclick:()=>{S.view="cal";S.calPsy=p.id;render();}},"Kalender ›")));};
   return h("div",{class:"col"},
     h("p",{class:"small muted",style:"margin:0"},"Alle Psycholog:innen mit ihren Profilen, wie sie auf balancd.ch und bei der Buchung erscheinen. Als Admin können Sie jedes Profil und jede Verfügbarkeit übersteuern; die Person wird im Posteingang informiert."),
+    permCard(),
     h("div",{class:"teamgrid"},...PSY.map(card)),
     S.fid.length?h("div",{class:"card col",style:"gap:6px"},h("b",null,"Externe Zugänge"),...S.fid.map(f=>h("div",{class:"row"},h("span",null,f.name),h("span",{class:"pill"},"Treuhand (Abrechnung)"),h("span",{class:"small muted"},"Abrechnung und Lohn: alle Klient:innen (ohne Notizen), Rechnungen, Kalender, Statistik, Stundenrapport")))):null,
-    h("div",{class:"card col"},h("b",null,"Person einladen"),h("div",{class:"row"},fn,ln,em,rl,h("button",{type:"button",class:"btn primary",onclick:()=>{if(!em.value){toast("Bitte E-Mail eintragen.");return;}if(rl.value.startsWith("Treuhand")){S.fid.push({name:(fn.value+" "+ln.value).trim()||em.value});render();}toast("Einladung an "+em.value+" gesendet ("+rl.value+"). Das Profil füllt die Person selbst aus.");fn.value=ln.value=em.value="";}},"Einladen")),
+    !isMaster()?h("p",{class:"small muted",style:"margin:0"},"Personen einladen und Rollen vergeben können nur Master-Admins."):h("div",{class:"card col"},h("b",null,"Person einladen"),h("div",{class:"row"},fn,ln,em,rl,h("button",{type:"button",class:"btn primary",onclick:()=>{if(!em.value){toast("Bitte E-Mail eintragen.");return;}if(rl.value.startsWith("Treuhand")){S.fid.push({name:(fn.value+" "+ln.value).trim()||em.value});render();}toast("Einladung an "+em.value+" gesendet ("+rl.value+"). Das Profil füllt die Person selbst aus.");fn.value=ln.value=em.value="";}},"Einladen")),
       h("span",{class:"small muted"},"Treuhand macht Abrechnung und Lohn: sieht alle Klient:innen (Stammdaten, Rechnungsempfänger, Termine, Rechnungen, ohne Notizen und E-Mails), gibt Rechnungen frei, setzt Zahlungen und Gutschriften und sieht Kalender (nur ansehen), Statistik und Stundenrapport mit Download. Kein Zugriff auf Notizen, Anfragen, Posteingang und Einstellungen.")));}
 
 /* Feedback pro Teammitglied für Feedback- und Jahresgespräche (FR-83) */
@@ -2078,6 +2134,7 @@ const EN={
 const DAYS_DE=[...DAYS],MON_DE=[...MON],MONL_DE=[...MONL],WD_DE=[...WD];
 const DAYS_EN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],MON_EN=["Jan","Feb","Mar","Apr","May","June","July","Aug","Sept","Oct","Nov","Dec"],MONL_EN=["January","February","March","April","May","June","July","August","September","October","November","December"],WD_EN=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 var LANG="de";
+Object.assign(EN,{"Buchhaltung": "Accounting", "nur Master-Admin": "master admin only", "Rollen und Rechte": "Roles and permissions", "Bereiche": "Areas", "Person": "Person", "Rolle": "Role", "Jahresabschluss": "Annual accounts", "Unterlagen Steuererklärung": "Tax return documents", "Finanzübersicht": "Financial overview", "Belege und Ausgaben": "Receipts and expenses", "Jahresabschluss öffnen": "Open annual accounts", "Unterlagen herunterladen": "Download documents", "Übersicht öffnen": "Open overview", "Belege öffnen": "Open receipts", "Hat stattgefunden – abschliessen": "Took place – complete", "Hat nicht stattgefunden": "Did not take place", "Dauer korrigieren": "Correct duration", "Dauer stimmt": "Duration is correct", "Trotzdem abschliessen": "Complete anyway", "Erinnerung senden": "Send reminder", "Abschluss offen": "Completion pending", "Öffnen ›": "Open ›", "Prüfung vor dem Rechnungslauf": "Check before invoicing", "Plausibilität der Minuten": "Plausibility of minutes", "Nur Master-Admins können Rollen und Rechte ändern.": "Only master admins can change roles and permissions.", "Personen einladen und Rollen vergeben können nur Master-Admins.": "Only master admins can invite people and assign roles.", "Es braucht immer mindestens eine Master-Admin.": "There must always be at least one master admin.", "Master-Admin: alles wie Admin, dazu Rollen und Rechte des Teams und die Buchhaltung": "Master admin: everything an admin sees, plus team roles and permissions and accounting", "Änderungsverlauf": "Change log"});
 function setLang(l){LANG=l;const en=l==="en";DAYS.splice(0,7,...(en?DAYS_EN:DAYS_DE));MON.splice(0,12,...(en?MON_EN:MON_DE));MONL.splice(0,12,...(en?MONL_EN:MONL_DE));WD.splice(0,7,...(en?WD_EN:WD_DE));document.documentElement.lang=l;render();}
 function langSw(){return h("span",{class:"lang",role:"group","aria-label":"Sprache"},...[["de","DE"],["en","EN"]].map(([v,l])=>h("button",{type:"button","aria-pressed":String(LANG===v),onclick:()=>setLang(v)},l)));}
 const escRe=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
@@ -2114,6 +2171,7 @@ TYPES0.forEach(t=>{if(t.en)EN[t.name]=t.en;});
 Object.assign(EN,{"Feedback-Zusammenfassung pro Person":"Feedback summary per person","Als PDF fürs Jahresgespräch":"PDF for the annual review","Feedback-Umfrage":"Feedback survey","Finanzierung":"Financing","Selbstzahlung":"Self-payment","Für Psycholog:innen vorausgewählt.":"Preselected for psychologists.","nur online verfügbar":"online only","nicht verfügbar":"not available","Profil bearbeiten":"Edit profile","Kalender ›":"Calendar ›","‹ Team":"‹ Team","Externe Zugänge":"External access","Max. pro Tag":"Max. per day","Vor Ort":"In person","Zuletzt geändert: ":"Last changed: ","Benachrichtigungen":"Notifications","Gesendet":"Sent","Entwürfe":"Drafts","Archiv":"Archive","Papierkorb":"Trash","Alle":"All","Ungelesen":"Unread","Mit Anhang":"With attachment","↩ Antworten":"↩ Reply","↩↩ Allen antworten":"↩↩ Reply all","↪ Weiterleiten":"↪ Forward","Archivieren":"Archive","Löschen":"Delete","Wiederherstellen":"Restore","Ansehen":"View","In Akte":"To record","✓ in Akte":"✓ in record","Zuordnung lösen":"Unassign","Klient:in zuordnen …":"Assign to client …","Keiner Klient:in zugeordnet.":"Not assigned to a client.","Zugeordnet:":"Assigned:","📎 Anhang hinzufügen":"📎 Add attachment","Aus der Akte …":"From the record …","Als Entwurf speichern":"Save as draft","Senden":"Send","Von":"From","An":"To","Betreff":"Subject","Vorlage":"Template","Neue E-Mail":"New email","E-Mails & Dokumente":"Emails & documents","Datei hochladen":"Upload file","Herunterladen":"Download","Schliessen":"Close","Wann":"When","Art":"Type","Wiederh.":"Repeat","Psych.":"Psych.","Zahlungslink (Karte / TWINT)":"Payment link (card / TWINT)"});
 /* ============ render ============ */
 function render(){
+  if(!S.chkDone){S.chkDone=true;chkPush();}
   drawBar();const app=document.getElementById("app");app.textContent="";document.querySelector(".pop")?.remove();
   try{
     if(S.mode==="client")app.append(clientView());
