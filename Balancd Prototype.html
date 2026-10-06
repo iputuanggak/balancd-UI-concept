@@ -561,7 +561,8 @@ function seed(){
      clients,appts,blocks,requests,invoices,tpl:TPL.map(t=>({...t})),
      c:{screen:"start",tab:"book",who:"adult",modeSel:"site",psy:null,day:null,slot:null,holdUntil:null,form:{},checks:[false,false,false],pay:"twint",guardian:null,booked:null},
      fid:[{name:"Treuhand Muster AG"}],openAppt:null,openReq:"r1",openClient:null,rules:defaultRules(),rooms:defaultRooms(),reasons:defaultReasons(),avail:defaultAvail(),profile:defaultProfiles(),practice:{address:"am Hirschengraben 28 in 8001 Zürich",email:"hoi@balancd.ch",web:"www.balancd.ch",phone:"+41 44 000 00 00",recA:REC_A0,recY:REC_Y0},clientTab:"hist",invTab:"draft",invSel:new Set(["i1","i2","i3","i4","i5"]),statRange:"month",setTab:"types"};
-  S.perm={le:"Master-Admin",jf:"Psycholog:in",mk:"Admin",sm:"Psycholog:in"};S.permOff={};S.permLog=[];
+  S.perm={le:"Master-Admin",jf:"Psycholog:in",mk:"Admin",sm:"Psycholog:in"};S.off={};S.privShow={};
+  S.priv={le:{dob:"14.02.1993",ahv:"756.1111.2222.33",addr:"Musterstrasse 5, 8001 Zürich",iban:"CH93 0076 2011 6238 5295 7",bank:"Zürcher Kantonalbank",holder:"Laura E."},jf:{dob:"03.09.1990",ahv:"756.2222.3333.44",addr:"Beispielweg 2, 8004 Zürich",iban:"CH56 0483 5012 3456 7800 9",bank:"UBS",holder:"Jonas Frei"},mk:{dob:"21.06.1987",ahv:"756.3333.4444.55",addr:"Demoplatz 7, 8032 Zürich",iban:"CH44 3199 9123 0008 8901 2",bank:"PostFinance",holder:"Mia Keller"},sm:{dob:"",ahv:"",addr:"",iban:"",bank:"",holder:""}};S.permOff={};S.permLog=[];
   S.inbox=seedInbox(w);S.mails=seedMails(w);S.chkDone=false;
 }
 seed();
@@ -1923,6 +1924,7 @@ function profileView(){
         F("Erfahrung mit",multiSel(O.ages,pr.ages,"Erfahrung mit")),
         F("Finanzierung",h("div",{class:"col",style:"gap:4px"},multiSel(["Selbstzahlung","Zusatzversicherung"],pr.fin||(pr.fin=["Selbstzahlung","Zusatzversicherung"]),"Finanzierung"),h("label",{class:"radio small muted"},h("input",{type:"checkbox",disabled:true}),"Grundversicherung (nur für Psychotherapeut:innen, später)")),"Für Psycholog:innen vorausgewählt."),
         F("Zusatzversicherungen",multiSel(O.ins,pr.ins,"Zusatzversicherungen"),"Alle vorausgewählt. Abwählen, falls eine Versicherung Sie nicht anerkennt."))),
+    privCard(psy),
     h("div",{class:"row"},h("button",{type:"button",class:"btn primary",onclick:()=>{pr.about=about.value;if(!pr.lang.length){toast("Bitte mindestens eine Sprache wählen.");return;}
       p.spec=pr.spec.join(", ");p.lang=pr.lang.join(", ");p.minors=pr.minors;p.gln=pr.gln;pr.changed={t:new Date(NOW),by:P(S.me).name+(isAdmin()?" (Admin)":"")};
       if(isAdmin()&&psy!==S.me)ibPush({kind:"message",to:psy,title:"Profil von der Administration angepasst",text:"Die Administration hat Ihr Profil geändert. Bitte unter «Mein Profil» kontrollieren.",ref:{}});
@@ -1930,6 +1932,39 @@ function profileView(){
       h("span",{class:"small muted"},"Schwerpunkte, Sprachen und «begleitet Minderjährige» bestimmen, wer Klient:innen bei der Buchung angezeigt wird.")));}
 
 
+/* FR-81: Private Personaldaten (Lohn) – nur die Person selbst, Master-Admin und Treuhand */
+const canSeePriv=psy=>isMaster()||isFid()||psy===S.me;
+const maskIban=x=>{if(!x)return "–";const c=x.replace(/\s/g,"");return c.slice(0,4)+" •••• •••• "+c.slice(-3);};
+function privCard(psy){const p=P(psy);const d=S.priv[psy]||(S.priv[psy]={});
+  if(!canSeePriv(psy))return h("div",{class:"card small muted"},"🔒 Private Angaben (Geburtsdatum, AHV-Nummer, Adresse, Bankverbindung) sehen nur "+p.name+" selbst, Master-Admins und die Treuhand.");
+  const sty=inSty+";width:100%;padding:9px";const F=(k,l,ph,hint)=>h("label",{class:"f",style:"font-size:13px"},l,h("input",{value:d[k]||"",placeholder:ph||"",style:sty,oninput:e=>d[k]=e.target.value}),hint?h("span",{class:"small muted"},hint):null);
+  const miss=["dob","ahv","addr","iban","holder"].filter(k=>!d[k]).length;
+  return h("div",{class:"card col",style:"gap:12px;border-color:var(--accent)"},
+    h("div",{class:"row"},h("b",{style:"font-size:16px"},"🔒 Private Angaben für die Lohnzahlung"),h("span",{class:"spacer"}),miss?h("span",{class:"pill warn"},miss+" Angaben fehlen"):h("span",{class:"pill ok"},"vollständig")),
+    h("span",{class:"small muted"},"Nicht öffentlich: erscheint nie auf der Website oder bei der Buchung. Sichtbar nur für "+(psy===S.me?"dich":p.name)+", Master-Admins und die Treuhand."),
+    h("div",{class:"g2"},h("div",{class:"col",style:"gap:4px"},h("span",{style:"font-size:13px;font-weight:600"},"GLN"),h("span",null,S.profile[psy].gln||"–"),h("span",{class:"small muted"},"Aus dem Profil")),F("dob","Geburtsdatum","TT.MM.JJJJ"),F("ahv","AHV-Nummer (Sozialversicherungsnummer)","756.XXXX.XXXX.XX"),F("addr","Wohnadresse","Strasse, PLZ Ort"),F("iban","IBAN","CH.. .... .... .... .... ."),F("bank","Bank"),F("holder","Kontoinhaber:in")),
+    h("div",{class:"row"},h("button",{type:"button",class:"btn primary",onclick:()=>{if(d.ahv&&!/^756\.\d{4}\.\d{4}\.\d{2}$/.test(d.ahv.trim())){toast("AHV-Nummer bitte im Format 756.XXXX.XXXX.XX.");return;}if(d.iban&&!/^CH\d{2}[\d ]{17,}/i.test(d.iban.replace(/\s+/g," ").trim())){toast("Bitte eine gültige Schweizer IBAN eingeben.");return;}
+      S.permLog.unshift({t:new Date(NOW),by:P(S.me).name,what:p.name+": private Angaben geändert"});render();toast("Private Angaben gespeichert.");}},"Private Angaben speichern"),h("span",{class:"small muted"},"Jede Änderung wird protokolliert.")));}
+/* NEW-38: Offboarding – Austritt und Sperrung (nur Master-Admin) */
+const offOf=psy=>S.off[psy];
+function offPill(psy){const o=offOf(psy);if(!o)return h("span",{class:"pill ok"},"aktiv");return o.blocked?h("span",{class:"pill bad"},"gesperrt"):h("span",{class:"pill warn"},"Austritt per "+o.date);}
+function offboardDialog(psy){const p=P(psy);const others=PSY.filter(x=>x.id!==psy&&!offOf(x.id));let to=others[0].id,blockNow=false,fwd=true;
+  const dIn=h("input",{type:"date",style:inSty,value:(()=>{const d=new Date(NOW.getFullYear(),NOW.getMonth()+2,0);return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());})()});
+  const cls=S.clients.filter(c=>c.psy===psy&&c.status!=="beendet");const fut=()=>{const d=new Date(dIn.value+"T23:59");return S.appts.filter(a=>a.psy===psy&&a.client&&a.status==="geplant"&&(blockNow?a.start>NOW:a.start>d));};
+  const info=h("div",{class:"small"});const draw=()=>{info.textContent="";info.append(h("div",null,"• "+cls.length+" aktive Klient:innen und "+fut().length+" Termine "+(blockNow?"ab sofort":"nach dem Austritt")+" werden übertragen."),h("div",null,"• Profil wird "+(blockNow?"sofort":"ab dem Austrittsdatum")+" von der Website und aus der Buchung entfernt; keine neuen Buchungen mehr."),h("div",null,"• Login wird "+(blockNow?"sofort":"am Austrittsdatum")+" gesperrt; Dokumentation und Rechnungen bleiben erhalten."),h("div",null,"• Stundenrapport und Lohn bis zum Austritt bleiben für die Treuhand verfügbar."));};
+  dIn.onchange=draw;draw();
+  modal("Austritt / Profil sperren: "+p.name,h("div",{class:"col",style:"gap:10px"},
+    h("label",{class:"f"},"Austrittsdatum (letzter Arbeitstag)",dIn),
+    h("label",{class:"radio"},h("input",{type:"checkbox",onchange:e=>{blockNow=e.target.checked;draw();}}),"Login und Profil sofort sperren (z. B. bei sofortiger Freistellung)"),
+    h("label",{class:"f"},"Klient:innen und Termine übertragen an",h("select",{style:inSty,onchange:e=>to=e.target.value},...others.map(x=>h("option",{value:x.id},x.name)))),
+    h("label",{class:"radio"},h("input",{type:"checkbox",checked:true,onchange:e=>fwd=e.target.checked}),"E-Mails an "+mailOf(psy)+" ins Praxis-Postfach weiterleiten"),
+    h("div",{class:"card",style:"background:var(--warn-bg)"},info)),
+    [h("button",{type:"button",class:"btn",onclick:()=>dlg.close()},"Abbrechen"),h("button",{type:"button",class:"btn primary",style:"background:var(--bad);border-color:var(--bad)",onclick:()=>{
+      const date=dIn.value.split("-").reverse().join(".");const f=fut();cls.forEach(c=>{c.psy=to;c.log.push({t:new Date(NOW),by:P(S.me).name,what:"Psycholog:in gewechselt wegen Austritt: "+p.name+" → "+P(to).name});});
+      f.forEach(a=>{a.psy=to;if(a.mode==="site")a.room=roomFor(to,a.start);});
+      S.off[psy]={date,blocked:blockNow,to,fwd};S.permLog.unshift({t:new Date(NOW),by:P(S.me).name,what:p.name+": "+(blockNow?"sofort gesperrt":"Austritt per "+date)+" · Klient:innen an "+P(to).name});
+      ibPush({kind:"message",to:to,title:"Klient:innen übernommen von "+p.name,text:cls.length+" Klient:innen und "+f.length+" Termine wurden Ihnen wegen eines Austritts übertragen.",ref:{}});
+      dlg.close();render();toast(blockNow?p.name+" ist gesperrt.":"Austritt von "+p.name+" per "+date+" erfasst.");}},blockNow?"Sperren":"Austritt erfassen")]);}
 function availSummary(psy){const av=availOf(psy);const site=[],on=[];
   WDAYS.forEach(([wd,l])=>{const d=addDays(WEEK0,wd-1);const am=siteOK(psy,at(d,9)),pm=siteOK(psy,at(d,14));if(am||pm)site.push(DAYS[wd]+(am&&pm?"":am?" VM":" NM"));const r=av.online[wd];if(r)on.push(DAYS[wd]+" "+r[0]+"–"+r[1]);});
   return {site:site.join(", ")||"–",online:on.join(", ")||"–",perDay:av.perDay||S.rules.perDay};}
@@ -1940,14 +1975,16 @@ function teamOverview(){
   const card=p=>{const pr=S.profile[p.id],av=availSummary(p.id),O=PROF_OPTS();
     const kv=(k,v)=>[h("span",null,k),h("span",null,v)];
     return h("div",{class:"card col",style:"gap:10px"},
-      h("div",{class:"row",style:"flex-wrap:nowrap"},h("span",{class:"avatar",style:"width:48px;height:48px;font-size:17px"},p.ini),h("div",{class:"col",style:"gap:0;min-width:0;flex:1"},h("b",{style:"font-size:17px"},p.name),h("span",{class:"small muted"},((S.perm[p.id]||"Psycholog:in")==="Psycholog:in"?"Psycholog:in":"Psycholog:in + "+S.perm[p.id])+" · "+mailOf(p.id))),h("span",{class:"pill ok"},"aktiv")),
+      h("div",{class:"row",style:"flex-wrap:nowrap"},h("span",{class:"avatar",style:"width:48px;height:48px;font-size:17px"},p.ini),h("div",{class:"col",style:"gap:0;min-width:0;flex:1"},h("b",{style:"font-size:17px"},p.name),h("span",{class:"small muted"},((S.perm[p.id]||"Psycholog:in")==="Psycholog:in"?"Psycholog:in":"Psycholog:in + "+S.perm[p.id])+" · "+mailOf(p.id))),offPill(p.id)),
       h("div",{class:"kv",style:"grid-template-columns:120px minmax(0,1fr);font-size:14px"},...kv("Titel",pr.title),...kv("GLN",pr.gln),...kv("Minderjährige",pr.minors?"ja":"nein"),...kv("Versicherung",pr.insDefault+" · "+pr.ins.length+" von "+O.ins.length+" Zusatzversicherungen"),
         ...kv("Vor Ort",av.site),...kv("Online",av.online),...kv("Max. pro Tag",String(av.perDay))),
       h("div",{class:"col",style:"gap:4px"},h("span",{class:"small muted"},"Schwerpunkte"),chips(pr.spec,4)),
       h("div",{class:"col",style:"gap:4px"},h("span",{class:"small muted"},"Sprachen · Erfahrung mit"),chips(pr.lang.concat(pr.ages),6)),
       h("p",{class:"small muted",style:"margin:0"},pr.about),
       pr.changed?h("span",{class:"small muted"},"Zuletzt geändert: "+pr.changed.by+", "+fDT(pr.changed.t)):null,
-      h("div",{class:"row"},h("button",{type:"button",class:"btn primary",onclick:()=>{S.setTab="me";S.profPsy=p.id;render();window.scrollTo(0,0);}},"Profil bearbeiten"),h("button",{type:"button",class:"btn",onclick:()=>{S.setTab="avail";S.availPsy=p.id;render();window.scrollTo(0,0);}},"Verfügbarkeit"),h("button",{type:"button",class:"btn ghost",onclick:()=>{S.view="cal";S.calPsy=p.id;render();}},"Kalender ›")));};
+      h("div",{class:"row"},h("button",{type:"button",class:"btn primary",onclick:()=>{S.setTab="me";S.profPsy=p.id;render();window.scrollTo(0,0);}},"Profil bearbeiten"),h("button",{type:"button",class:"btn",onclick:()=>{S.setTab="avail";S.availPsy=p.id;render();window.scrollTo(0,0);}},"Verfügbarkeit"),h("button",{type:"button",class:"btn ghost",onclick:()=>{S.view="cal";S.calPsy=p.id;render();}},"Kalender ›"),
+        isMaster()&&p.id!==S.me?(offOf(p.id)?h("button",{type:"button",class:"btn ghost",onclick:()=>{delete S.off[p.id];S.permLog.unshift({t:new Date(NOW),by:P(S.me).name,what:p.name+": reaktiviert"});render();toast(p.name+" ist wieder aktiv.");}},"Reaktivieren"):h("button",{type:"button",class:"btn ghost",style:"color:var(--bad)",onclick:()=>offboardDialog(p.id)},"Austritt / sperren")):null),
+      offOf(p.id)?h("span",{class:"small muted"},(offOf(p.id).blocked?"Login und Profil gesperrt. ":"Ab "+offOf(p.id).date+": Login gesperrt, Profil nicht mehr auf der Website und nicht buchbar. ")+"Klient:innen an "+P(offOf(p.id).to).name+" übertragen."+(offOf(p.id).fwd?" E-Mails gehen ins Praxis-Postfach.":"")):null);};
   return h("div",{class:"col"},
     h("p",{class:"small muted",style:"margin:0"},"Alle Psycholog:innen mit ihren Profilen, wie sie auf balancd.ch und bei der Buchung erscheinen. Als Admin können Sie jedes Profil und jede Verfügbarkeit übersteuern; die Person wird im Posteingang informiert."),
     permCard(),
@@ -1980,6 +2017,11 @@ function hoursView(){
       h("tbody",null,...rows.map(r=>h("tr",null,h("td",null,r.p.name),h("td",{class:"num"},r.n),h("td",{class:"num"},r.s.toFixed(1)),h("td",{class:"num"},r.int.toFixed(1)),h("td",{class:"num"},(r.s+r.int).toFixed(1))))),
       h("tfoot",null,h("tr",null,h("td",{style:"font-weight:700"},"Total"),h("td",{class:"num",style:"font-weight:700"},sum("n")),h("td",{class:"num",style:"font-weight:700"},sum("s").toFixed(1)),h("td",{class:"num",style:"font-weight:700"},sum("int").toFixed(1)),h("td",{class:"num",style:"font-weight:700"},(sum("s")+sum("int")).toFixed(1)))))),
     h("div",{class:"row"},h("button",{type:"button",class:"btn primary",onclick:()=>toast("Download Stundenrapport "+per+" als Excel/CSV (Demo).")},"Excel / CSV herunterladen"),h("button",{type:"button",class:"btn",onclick:()=>toast("Download Stundenrapport "+per+" als PDF (Demo).")},"PDF herunterladen")),
+    h("div",{class:"card col",style:"gap:8px"},h("div",{class:"row"},h("b",null,"🔒 Personaldaten für die Lohnzahlung"),h("span",{class:"spacer"}),h("button",{type:"button",class:"btn small",onclick:()=>toast("Download Personaldaten als Excel/CSV (Demo).")},"Excel / CSV ⤓")),
+      h("div",{class:"tblwrap"},h("table",{class:"tbl"},h("thead",null,h("tr",null,...["Name","GLN","Geburtsdatum","AHV-Nummer","IBAN","Status"].map(x=>h("th",null,x)))),
+        h("tbody",null,...PSY.map(p=>{const d=S.priv[p.id]||{};const sh=S.privShow[p.id];return h("tr",null,h("td",null,h("b",null,p.name)),h("td",null,S.profile[p.id].gln),h("td",null,d.dob||h("span",{class:"pill warn"},"fehlt")),h("td",null,d.ahv?(sh?d.ahv:"756.••••.••••.••"):h("span",{class:"pill warn"},"fehlt")),
+          h("td",null,d.iban?(sh?d.iban:maskIban(d.iban)):h("span",{class:"pill warn"},"fehlt"),d.iban||d.ahv?h("button",{type:"button",class:"btn ghost small",onclick:()=>{S.privShow[p.id]=!sh;render();}},sh?"verbergen":"anzeigen"):null),h("td",null,offPill(p.id)));})))),
+      h("span",{class:"small muted"},"Nur für Master-Admins und Treuhand sichtbar. Jeder Abruf wird protokolliert.")),
     h("p",{class:"small muted",style:"margin:0"},"Die Treuhand sieht keine Notizen, Anfragen, Posteingang oder Einstellungen."));}
 
 /* Klient:innen: Meine Termine über den Login-Link (FR-04) */
