@@ -211,8 +211,13 @@ dialog.wide{width:min(900px,calc(100% - 32px))}
 .btn.icon{min-width:40px;padding-inline:10px;font-size:18px;line-height:1}
 .calsel{border:1px solid var(--line);border-radius:999px;padding:8px 14px;background:var(--surface);font-weight:600;min-height:40px}
 .calgrid-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.calside{display:flex;flex-direction:column;gap:12px;min-width:0}
+.calnotes{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.calnotes .pill{white-space:normal;text-align:left;line-height:1.35;padding:7px 12px;border-radius:12px}
+.calacts{display:flex;flex-wrap:wrap;gap:2px}
+@media (min-width:1380px){.calside{position:sticky;top:60px}.calnotes{flex-direction:column;align-items:stretch}.calacts{flex-direction:column;align-items:flex-start;border-top:1px solid var(--line);padding-top:6px;margin-top:2px}}
 .mini{display:none}
-@media (min-width:1380px){.calgrid-wrap{grid-template-columns:220px minmax(0,1fr)}.mini{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;position:sticky;top:60px}}
+@media (min-width:1380px){.calgrid-wrap{grid-template-columns:220px minmax(0,1fr)}.mini{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}}
 .mini b{font-size:14px}
 .mini>.row{flex-wrap:nowrap}
 .mini .btn.icon{min-height:30px;min-width:30px;font-size:16px;padding:0}
@@ -584,7 +589,7 @@ seed();
 function drawBar(){
   const seg=document.getElementById("modeSeg");seg.textContent="";
   [["client","Klient:innen-Sicht"],["guardian","Elternseite"],["team","Team-Sicht"]].forEach(([m,l])=>seg.append(h("button",{type:"button","aria-pressed":String(S.mode===m),onclick:()=>{S.mode=m;render();}},l)));
-  document.getElementById("demoDate").textContent="Demo-Zeit: "+fDT(NOW);
+  document.getElementById("demoDate").textContent="Demo-Zeit: "+fDT(NOW);document.getElementById("resetBtn").textContent=LANG==="en"?"Reset demo":"Demo zurücksetzen";
   const rs=document.getElementById("roleSeg");rs.textContent="";rs.hidden=S.mode!=="team";
   const RH={psy:"Psycholog:in: Kalender, eigene Klient:innen, Rechnungen, Zahlen und Lohn",admin:"Admin: ganzes Team, Anfragen, Auswertungen, Freigaben, Einstellungen",master:"Master-Admin: wie Admin, dazu Rollen und Rechte, Finanzen, Buchhaltung",fid:"Treuhand: Stammdaten (ohne Notizen), Rechnungen, Kalender (ansehen), Statistik, Stundenrapport, Buchhaltung"};
   [["psy","Psycholog:in"],["admin","Admin"],["master","Master-Admin"],["fid","Treuhand"]].forEach(([r,l])=>rs.append(h("button",{type:"button",title:RH[r],"aria-pressed":String(S.role===r),onclick:()=>{S.role=r;if(r==="psy"&&S.calPsy==="all")S.calPsy=S.me;if(r==="fid"){S.openAppt=null;S.calPsy="all";S.view="cal";}render();}},l)));
@@ -935,18 +940,19 @@ function calView(){
     h("button",{type:"button",class:"btn",title:"Heute (Taste T)",onclick:()=>calGo(NOW)},"Heute"),
     h("div",{class:"row",style:"gap:2px"},h("button",{type:"button",class:"btn icon","aria-label":"Zurück",title:"Zurück (Taste K)",onclick:()=>calStep(-1)},"‹"),h("button",{type:"button",class:"btn icon","aria-label":"Weiter",title:"Weiter (Taste J)",onclick:()=>calStep(1)},"›")),
     h("h1",null,calTitle()),h("span",{class:"spacer"}),modes,sel);
-  const notices=h("div",{class:"row"},
-    isFid()?null:missing.length?h("button",{type:"button",class:"pill warn",style:"border:0;cursor:pointer",onclick:()=>openAppt(missing[0].id)},"! Dokumentation fehlt bei "+missing.length+" Termin"+(missing.length>1?"en":"")):h("span",{class:"pill ok"},"Alle Termine dokumentiert"),
-    openClose.length?h("button",{type:"button",class:"pill warn",style:"border:0;cursor:pointer",onclick:()=>openAppt(openClose[0].id)},"○ Abschluss offen bei "+openClose.length+" Termin"+(openClose.length>1?"en":"")):null,
-    isAdmin()&&pend.length?h("button",{type:"button",class:"pill warn",style:"border:0;cursor:pointer",onclick:()=>approveDialog(pend[0])},pend.length+" Abwesenheit zur Freigabe"):null,
-    h("span",{class:"spacer"}),
-    canEdit(who==="all"?S.me:who)?h("button",{type:"button",class:"btn ghost",onclick:()=>absenceDialog()},"+ Abwesenheit"):null,
-    canEdit(who==="all"?S.me:who)?h("button",{type:"button",class:"btn ghost",title:"Vor-Ort-Halbtage abschalten, Online-Zeiten eintragen",onclick:()=>{S.view="set";S.setTab="avail";S.availPsy=who==="all"?S.me:who;render();}},"Verfügbarkeit anpassen"):null);
+  const en=LANG==="en",nn=(n,de1,den,e1,en_)=>n+" "+(en?(n>1?en_:e1):(n>1?den:de1));
+  const notices=h("div",{class:"calnotes"},
+    isFid()?null:missing.length?h("button",{type:"button",class:"pill warn notr",style:"border:0;cursor:pointer",onclick:()=>openAppt(missing[0].id)},en?"! Documentation missing for "+nn(missing.length,"","","appointment","appointments"):"! Dokumentation fehlt bei "+nn(missing.length,"Termin","Terminen","","")):h("span",{class:"pill ok notr"},en?"All appointments documented":"Alle Termine dokumentiert"),
+    openClose.length?h("button",{type:"button",class:"pill warn notr",style:"border:0;cursor:pointer",onclick:()=>openAppt(openClose[0].id)},en?"○ Completion pending for "+nn(openClose.length,"","","appointment","appointments"):"○ Abschluss offen bei "+nn(openClose.length,"Termin","Terminen","","")):null,
+    isAdmin()&&pend.length?h("button",{type:"button",class:"pill warn notr",style:"border:0;cursor:pointer",onclick:()=>approveDialog(pend[0])},en?nn(pend.length,"","","absence","absences")+" to approve":nn(pend.length,"Abwesenheit","Abwesenheiten","","")+" zur Freigabe"):null,
+    canEdit(who==="all"?S.me:who)?h("div",{class:"calacts"},
+      h("button",{type:"button",class:"btn ghost notr",onclick:()=>absenceDialog()},en?"+ Absence":"+ Abwesenheit"),
+      h("button",{type:"button",class:"btn ghost notr",title:"Vor-Ort-Halbtage abschalten, Online-Zeiten eintragen",onclick:()=>{S.view="set";S.setTab="avail";S.availPsy=who==="all"?S.me:who;render();}},en?"Adjust availability":"Verfügbarkeit anpassen")):null);
   const main=S.calMode==="month"?monthGrid(who):timeGrid(who);
   const legend=h("div",{class:"row small muted"},...TYPES.map(t=>h("span",{class:"row",style:"gap:5px"},h("span",{style:`width:12px;height:12px;border-radius:3px;background:var(--t-${t.cls})`}),t.name)),h("span",{class:"row",style:"gap:5px"},h("span",{class:"swatch-block"}),"Blocker"),h("span",{class:"row",style:"gap:5px"},h("span",{class:"sw-av site"}),"verfügbar vor Ort"),h("span",{class:"row",style:"gap:5px"},h("span",{class:"sw-av online"}),"nur online verfügbar"),h("span",{class:"row",style:"gap:5px"},h("span",{class:"sw-av off"}),"nicht verfügbar"),h("span",{class:"row",style:"gap:5px"},h("span",{class:"sw-buf"}),"Puffer"),
     h("span",{class:"spacer"}),h("span",null,"✓ abgeschlossen · ○ Abschluss offen · ! Doku fehlt · ↻ Serie"));
   const help=h("p",{class:"small muted",style:"margin:0"},canEdit(who==="all"?S.me:who)?"Klicken = Standardtermin 50 Min. + 10 Min. Puffer · aufziehen = eigene Länge · Termin ziehen = verschieben (auch auf einen anderen Tag) · unteren Rand ziehen = Länge ändern (5-Minuten-Schritte, mit Alt-Taste auf die Minute) · Tasten: T heute, J/K weiter/zurück, D/X/W/M Ansicht, C neuer Termin":isFid()?"Treuhand: alle Kalender nur ansehen. Notizen und Dokumentation sind nicht sichtbar.":"Kalender einer Kolleg:in – nur ansehen.");
-  return h("div",{class:"col"},head,notices,h("div",{class:"calgrid-wrap"},miniMonth(),main),legend,help);
+  return h("div",{class:"col"},head,h("div",{class:"calgrid-wrap"},h("div",{class:"calside"},miniMonth(),notices),main),legend,help);
 }
 function miniMonth(){
   if(!S.miniDate)S.miniDate=new Date(calAnchor().getFullYear(),calAnchor().getMonth(),1);
@@ -2250,6 +2256,7 @@ const DAYS_DE=[...DAYS],MON_DE=[...MON],MONL_DE=[...MONL],WD_DE=[...WD];
 const DAYS_EN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],MON_EN=["Jan","Feb","Mar","Apr","May","June","July","Aug","Sept","Oct","Nov","Dec"],MONL_EN=["January","February","March","April","May","June","July","August","September","October","November","December"],WD_EN=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 var LANG="de";
 Object.assign(EN,{"Buchhaltung": "Accounting", "nur Master-Admin": "master admin only", "Rollen und Rechte": "Roles and permissions", "Bereiche": "Areas", "Person": "Person", "Rolle": "Role", "Jahresabschluss": "Annual accounts", "Unterlagen Steuererklärung": "Tax return documents", "Finanzübersicht": "Financial overview", "Belege und Ausgaben": "Receipts and expenses", "Jahresabschluss öffnen": "Open annual accounts", "Unterlagen herunterladen": "Download documents", "Übersicht öffnen": "Open overview", "Belege öffnen": "Open receipts", "Hat stattgefunden – abschliessen": "Took place – complete", "Hat nicht stattgefunden": "Did not take place", "Dauer korrigieren": "Correct duration", "Dauer stimmt": "Duration is correct", "Trotzdem abschliessen": "Complete anyway", "Erinnerung senden": "Send reminder", "Abschluss offen": "Completion pending", "Öffnen ›": "Open ›", "Prüfung vor dem Rechnungslauf": "Check before invoicing", "Plausibilität der Minuten": "Plausibility of minutes", "Nur Master-Admins können Rollen und Rechte ändern.": "Only master admins can change roles and permissions.", "Personen einladen und Rollen vergeben können nur Master-Admins.": "Only master admins can invite people and assign roles.", "Es braucht immer mindestens eine Master-Admin.": "There must always be at least one master admin.", "Master-Admin: wie Admin, dazu Rollen und Rechte, Finanzen, Buchhaltung": "Master admin: like admin, plus roles and permissions, finances, accounting", "Master-Admin und Treuhand": "Master admin and fiduciary", "Änderungsverlauf": "Change log"});
+Object.assign(EN,{"Alltag":"Daily work","Personen":"People","Verwaltung":"Administration","Abmelden":"Log out","Administrator:in":"Administrator","Klient:in suchen …":"Search client …","Abmelden (Demo).":"Log out (demo)."});
 function setLang(l){LANG=l;const en=l==="en";DAYS.splice(0,7,...(en?DAYS_EN:DAYS_DE));MON.splice(0,12,...(en?MON_EN:MON_DE));MONL.splice(0,12,...(en?MONL_EN:MONL_DE));WD.splice(0,7,...(en?WD_EN:WD_DE));document.documentElement.lang=l;render();}
 function langSw(){return h("span",{class:"lang",role:"group","aria-label":"Sprache"},...[["de","DE"],["en","EN"]].map(([v,l])=>h("button",{type:"button","aria-pressed":String(LANG===v),onclick:()=>setLang(v)},l)));}
 const escRe=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
