@@ -7,8 +7,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --bg:#F4F6F4; --surface:#FFFFFF; --sunk:#EEF2EF; --ink:#1D2724; --muted:#56645F; --line:#D9E0DC; --line2:#E7ECE9;
-  --accent:#4B6D64; --accent-ink:#FFFFFF; --accent-soft:#E3ECE8; --brand:#8AA49E;
+  --bg:#F5F1EB; --surface:#FFFFFF; --sunk:#EFEAE2; --ink:#1E2B27; --muted:#5F6B66; --line:#E3DCD1; --line2:#EEE8DF;
+  --accent:#3F6158; --accent-ink:#FFFFFF; --accent-soft:#E2EBE6; --brand:#8AA49E;
+  --side:#2C453E; --side-ink:#EEF3F0; --side-muted:#A3B8B0; --side-hi:rgba(255,255,255,.09); --side-line:rgba(255,255,255,.12);
   --warn:#8A4B08; --warn-bg:#FFF1DE; --warn-line:#E8C48E; --ok:#2F6B47; --ok-bg:#E0F0E6; --bad:#8E2F25; --bad-bg:#F8E1DD;
   --t-ini:#CFE2D6; --t-ini-ink:#1E3D30; --t-ind:#D9E4F2; --t-ind-ink:#1F3A5C; --t-cpl:#E8DDF0; --t-cpl-ink:#4B2F5E;
   --t-adhs:#F2E1C2; --t-adhs-ink:#5A3A0C; --t-int:#E4E5DF; --t-int-ink:#3D3F38;
@@ -16,14 +17,14 @@
   --font:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  color-scheme:dark; --bg:#121816; --surface:#1A221F; --sunk:#151C19; --ink:#E3EAE7; --muted:#9AA8A2; --line:#2E3934; --line2:#25302B;
+  color-scheme:dark; --bg:#121816; --surface:#1A221F; --side:#0F1714; --side-ink:#DCE6E1; --side-muted:#8FA59D; --side-hi:rgba(255,255,255,.07); --side-line:rgba(255,255,255,.08); --sunk:#151C19; --ink:#E3EAE7; --muted:#9AA8A2; --line:#2E3934; --line2:#25302B;
   --accent:#8FBCAC; --accent-ink:#10231D; --accent-soft:#223630; --warn:#F0B270; --warn-bg:#3A2A18; --warn-line:#6B4A22;
   --ok:#8FD3AA; --ok-bg:#1E3527; --bad:#F0A197; --bad-bg:#3E2320;
   --t-ini:#23402F; --t-ini-ink:#CFE9D9; --t-ind:#1F3247; --t-ind-ink:#D5E5F7; --t-cpl:#34284A; --t-cpl-ink:#E6D8F3;
   --t-adhs:#43331A; --t-adhs-ink:#F4DDB5; --t-int:#2C2E2A; --t-int-ink:#D9DAD3; --bar:#0B100E; --bar-ink:#D8E2DD;
 }}
 :root[data-theme="dark"]{
-  color-scheme:dark; --bg:#121816; --surface:#1A221F; --sunk:#151C19; --ink:#E3EAE7; --muted:#9AA8A2; --line:#2E3934; --line2:#25302B;
+  color-scheme:dark; --bg:#121816; --surface:#1A221F; --side:#0F1714; --side-ink:#DCE6E1; --side-muted:#8FA59D; --side-hi:rgba(255,255,255,.07); --side-line:rgba(255,255,255,.08); --sunk:#151C19; --ink:#E3EAE7; --muted:#9AA8A2; --line:#2E3934; --line2:#25302B;
   --accent:#8FBCAC; --accent-ink:#10231D; --accent-soft:#223630; --warn:#F0B270; --warn-bg:#3A2A18; --warn-line:#6B4A22;
   --ok:#8FD3AA; --ok-bg:#1E3527; --bad:#F0A197; --bad-bg:#3E2320;
   --t-ini:#23402F; --t-ini-ink:#CFE9D9; --t-ind:#1F3247; --t-ind-ink:#D5E5F7; --t-cpl:#34284A; --t-cpl-ink:#E6D8F3;
@@ -40,7 +41,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .col{display:flex;flex-direction:column;gap:12px}
 .spacer{flex:1}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;cursor:pointer;min-height:40px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 16px;font-weight:600;font-size:14px;cursor:pointer;min-height:40px}
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.big{width:100%;padding:15px;font-size:17px;border-radius:12px}
@@ -51,7 +52,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 label.f{display:flex;flex-direction:column;gap:5px;font-size:14px;font-weight:600}
 label.f input,label.f select,label.f textarea{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:11px 12px;font-size:16px;font-weight:400;min-width:0}
 label.f textarea{min-height:90px;resize:vertical}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;z-index:60;max-width:calc(100% - 32px)}
 
 /* prototype bar */
@@ -96,25 +97,34 @@ label.f textarea{min-height:90px;resize:vertical}
 .summary span:nth-child(odd){color:var(--muted)}
 
 /* team app */
-.app{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - 44px)}
-.side{background:var(--surface);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:4px}
-.side img{height:28px;margin:0 8px 18px;align-self:flex-start}
-.nav{display:flex;justify-content:space-between;align-items:center;border:0;background:none;text-align:left;padding:10px 12px;border-radius:10px;font-weight:500;cursor:pointer;color:var(--muted);width:100%}
-.nav[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
-.nav .n{background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:700;border-radius:999px;padding:1px 8px}
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:calc(100vh - 44px)}
+.side{background:var(--side);color:var(--side-ink);padding:22px 14px 16px;display:flex;flex-direction:column;gap:2px;position:sticky;top:44px;height:calc(100vh - 44px);overflow-y:auto}
+.side .grp{font-size:12.5px;font-weight:600;color:var(--side-muted);padding:18px 12px 6px}
+.side .who{margin-top:auto;border-top:1px solid var(--side-line);padding:14px 6px 2px;display:flex;align-items:center;gap:10px}
+.side .who .avatar{width:36px;height:36px;font-size:13px;background:var(--side-hi);color:var(--side-ink)}
+.side .who b{display:block;font-size:14px}.side .who span{font-size:12.5px;color:var(--side-muted)}
+.side .out{background:none;border:1px solid var(--side-line);color:var(--side-ink);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;margin:10px 6px 0;align-self:flex-start;display:inline-flex;gap:6px;align-items:center}
+.ico{width:18px;height:18px;flex-shrink:0;display:inline-flex}.ico svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.side img{height:26px;margin:2px 12px 8px;align-self:flex-start;filter:brightness(0) invert(1)}
+.nav{display:flex;gap:11px;align-items:center;border:0;background:none;text-align:left;padding:9px 12px;border-radius:999px;font-weight:500;font-size:14.5px;cursor:pointer;color:var(--side-ink);width:100%;opacity:.86}
+.nav:hover{background:var(--side-hi);opacity:1}
+.nav .lbl{flex:1}
+.nav[aria-current="page"]{background:var(--bg);color:var(--ink);font-weight:600;opacity:1}
+.nav .n{background:#D9E7E0;color:#1E3A32;font-size:11.5px;font-weight:700;border-radius:999px;padding:1px 8px}
 .main{display:flex;flex-direction:column;min-width:0}
-.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--line)}
-.top input[type=search]{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--bg);width:260px;max-width:100%}
+.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:22px 32px 4px;background:transparent}
+.top input[type=search]{border:1px solid var(--line);border-radius:999px;padding:10px 16px 10px 38px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235F6B66' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m11 11 3.5 3.5'/%3E%3C/svg%3E") no-repeat 14px center;width:340px;max-width:100%}
 .role{display:inline-flex;background:var(--sunk);border-radius:10px;padding:3px}
 .role button{border:0;background:none;padding:7px 12px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted)}
 .role button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
-.content{padding:20px 24px 60px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.content{padding:18px 32px 72px;display:flex;flex-direction:column;gap:18px;min-width:0}
 .ptitle{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.ptitle h1{font-size:22px}
+.ptitle h1{font-size:28px;font-weight:650;letter-spacing:-.015em}
+.calbar h1{font-size:24px}
 @media (max-width:820px){
   .app{grid-template-columns:1fr}
-  .side{flex-direction:row;overflow-x:auto;padding:8px 12px;border-right:0;border-bottom:1px solid var(--line)}
-  .side img{display:none}
+  .side{flex-direction:row;overflow-x:auto;padding:8px 12px;position:static;height:auto}
+  .side img,.side .grp,.side .who,.side .out{display:none}
   .nav{width:auto;white-space:nowrap}
   .top,.content{padding-inline:16px}
 }
@@ -162,16 +172,16 @@ label.f textarea{min-height:90px;resize:vertical}
 .hist{border:1px solid var(--line);border-radius:10px;background:var(--surface)}
 .hist summary{padding:10px 12px;cursor:pointer;font-weight:600;font-size:14px}
 .hist p{margin:0;padding:0 12px 12px;font-size:14px;white-space:pre-wrap}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
-.kpi b{display:block;font-size:26px;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px}
+.kpi b{display:block;font-size:28px;font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.15;margin-top:4px}
 .kpi span{font-size:13px;color:var(--muted)}
 .tbl{width:100%;border-collapse:collapse;font-size:14px}
-.tbl th{text-align:left;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;border-bottom:1px solid var(--line);font-weight:700}
-.tbl td{padding:11px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
+.tbl th{text-align:left;font-size:13px;color:var(--muted);padding:12px 14px;border-bottom:1px solid var(--line);font-weight:600;background:#FBF9F6}
+.tbl td{padding:13px 14px;border-bottom:1px solid var(--line2);vertical-align:top}
 .tbl .num{text-align:right;font-variant-numeric:tabular-nums}
 .tblwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
-.hbar{display:grid;grid-template-columns:150px minmax(0,1fr) 60px;gap:10px;align-items:center;font-size:14px}
+.hbar{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:14px}
 .hbar i{display:block;height:12px;border-radius:6px;background:var(--brand)}
 .hbar .track{background:var(--sunk);border-radius:6px}
 dialog{border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);padding:20px;width:min(520px,calc(100% - 32px))}
@@ -199,7 +209,7 @@ dialog.wide{width:min(900px,calc(100% - 32px))}
 /* calendar v2 – wie Google Kalender */
 .calbar h1{font-size:21px;min-width:0}
 .btn.icon{min-width:40px;padding-inline:10px;font-size:18px;line-height:1}
-.calsel{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);font-weight:600;min-height:40px}
+.calsel{border:1px solid var(--line);border-radius:999px;padding:8px 14px;background:var(--surface);font-weight:600;min-height:40px}
 .calgrid-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
 .mini{display:none}
 @media (min-width:1380px){.calgrid-wrap{grid-template-columns:220px minmax(0,1fr)}.mini{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;position:sticky;top:60px}}
@@ -333,6 +343,7 @@ dialog.wide{width:min(900px,calc(100% - 32px))}
 <div class="pbar" role="region" aria-label="Prototyp-Steuerung">
   <b>Prototyp</b>
   <div class="seg" id="modeSeg"></div>
+  <div class="seg" id="roleSeg" aria-label="Rolle"></div>
   <span class="spacer"></span>
   <span id="demoDate" class="small"></span>
   <button class="reset" id="resetBtn" type="button">Demo zurücksetzen</button>
@@ -574,6 +585,9 @@ function drawBar(){
   const seg=document.getElementById("modeSeg");seg.textContent="";
   [["client","Klient:innen-Sicht"],["guardian","Elternseite"],["team","Team-Sicht"]].forEach(([m,l])=>seg.append(h("button",{type:"button","aria-pressed":String(S.mode===m),onclick:()=>{S.mode=m;render();}},l)));
   document.getElementById("demoDate").textContent="Demo-Zeit: "+fDT(NOW);
+  const rs=document.getElementById("roleSeg");rs.textContent="";rs.hidden=S.mode!=="team";
+  const RH={psy:"Psycholog:in: Kalender, eigene Klient:innen, Rechnungen, Zahlen und Lohn",admin:"Admin: ganzes Team, Anfragen, Auswertungen, Freigaben, Einstellungen",master:"Master-Admin: wie Admin, dazu Rollen und Rechte, Finanzen, Buchhaltung",fid:"Treuhand: Stammdaten (ohne Notizen), Rechnungen, Kalender (ansehen), Statistik, Stundenrapport, Buchhaltung"};
+  [["psy","Psycholog:in"],["admin","Admin"],["master","Master-Admin"],["fid","Treuhand"]].forEach(([r,l])=>rs.append(h("button",{type:"button",title:RH[r],"aria-pressed":String(S.role===r),onclick:()=>{S.role=r;if(r==="psy"&&S.calPsy==="all")S.calPsy=S.me;if(r==="fid"){S.openAppt=null;S.calPsy="all";S.view="cal";}render();}},l)));
 }
 document.getElementById("resetBtn").onclick=()=>{seed();render();toast("Demo zurückgesetzt");};
 
@@ -810,20 +824,28 @@ const toClose=a=>a.client&&a.type!=="int"&&a.status==="geplant"&&new Date(a.star
 const myClients=()=>(isAdmin()||S.role==="fid")?S.clients:S.clients.filter(c=>c.psy===S.me||S.appts.some(a=>a.client===c.id&&a.psy===S.me));
 const canEdit=psy=>S.role!=="fid"&&(isAdmin()||psy===S.me);
 const isFid=()=>S.role==="fid",seesAll=()=>isAdmin()||S.role==="fid";
+const ICONS={cal:'<rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>',inbox:'<path d="M3 13l2.5-7.5A2 2 0 0 1 7.4 4h9.2a2 2 0 0 1 1.9 1.5L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/>',req:'<path d="M21 12a8.5 8.5 0 0 1-12.3 7.6L3 21l1.4-5.4A8.5 8.5 0 1 1 21 12z"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5M12 16.5h.01"/>',
+ cli:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 14.8c1.6.8 2.7 2.5 3 5.2"/>',inv:'<path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 7.5h6M9 11.5h6M9 15.5h3"/>',stat:'<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',acc:'<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 21.5V4.5M8.5 7h7M8.5 11h5"/>',
+ set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+ pay:'<rect x="2.5" y="6" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 15h3"/>',me:'<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/>',hours:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',out:'<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/>'};
+function ico(k){const e=h("span",{class:"ico","aria-hidden":"true"});e.innerHTML='<svg viewBox="0 0 24 24">'+ICONS[k]+'</svg>';return e;}
 function teamView(){
   const openReq=S.requests.filter(r=>["neu","in Bearbeitung"].includes(r.status)).length;
   const navs=S.role==="fid"?[["cal","Kalender"],["cli","Klient:innen"],["inv","Rechnungen"],["stat","Statistik"],["hours","Stundenrapport"],["acc","Buchhaltung"]]:isAdmin()?[["cal","Kalender"],["inbox","Posteingang",ibUnread()],["req","Anfragen",openReq],["cli","Klient:innen"],["inv","Rechnungen"],["stat","Statistik"]].concat(isMaster()?[["acc","Buchhaltung"]]:[]).concat([["set","Einstellungen"]])
     :[["cal","Kalender"],["inbox","Posteingang",ibUnread()],["cli","Klient:innen"],["inv","Rechnungen"],["stat","Meine Zahlen"],["pay","Lohnabrechnungen"],["set","Mein Profil"]];
   if(!navs.some(n=>n[0]===S.view))S.view=navs[0][0];const fid=S.role==="fid";
+  const GRP={cal:"Alltag",inbox:"Alltag",req:"Alltag",cli:"Personen",inv:"Verwaltung",stat:"Verwaltung",pay:"Verwaltung",hours:"Verwaltung",acc:"Verwaltung",set:"Verwaltung"};const ICK={set:isAdmin()?"set":"me"};
+  const sideItems=[];let lastG="";navs.forEach(([v,l,n])=>{const g=(S.role==="psy"&&v==="set")?"Verwaltung":GRP[v];if(g!==lastG){sideItems.push(h("div",{class:"grp"},g));lastG=g;}
+    sideItems.push(h("button",{type:"button",class:"nav","aria-current":S.view===v?"page":null,onclick:()=>{S.view=v;S.openAppt=null;render();}},ico(ICK[v]||v),h("span",{class:"lbl"},l),n?h("span",{class:"n"},n):null));});
+  const roleName={psy:"Psycholog:in",admin:"Administrator:in",master:"Master-Admin",fid:"Treuhand"}[S.role];
   return h("div",{class:"app"},
-    h("nav",{class:"side","aria-label":"Hauptnavigation"},h("img",{src:LOGO,alt:"Balancd"}),...navs.map(([v,l,n])=>h("button",{type:"button",class:"nav","aria-current":S.view===v?"page":null,onclick:()=>{S.view=v;S.openAppt=null;render();}},l,n?h("span",{class:"n"},n):null))),
+    h("nav",{class:"side","aria-label":"Hauptnavigation"},h("img",{src:LOGO,alt:"Balancd"}),...sideItems,
+      h("div",{class:"who"},h("span",{class:"avatar"},fid?"TM":"LE"),h("div",null,h("b",null,fid?(S.fid[0]?S.fid[0].name:"Treuhand"):P(S.me).name),h("span",null,roleName))),
+      h("button",{type:"button",class:"out",onclick:()=>toast("Abmelden (Demo).")},ico("out"),"Abmelden")),
     h("div",{class:"main"},
-      h("div",{class:"top"},h("div",{class:"toprow"},h("input",{type:"search",placeholder:"Klient:in suchen","aria-label":"Klient:in suchen",onkeydown:e=>{if(e.key==="Enter"){const q=e.target.value.toLowerCase();const c=myClients().find(x=>x.name.toLowerCase().includes(q));if(c){S.view="cli";S.openClient=c.id;render();}else toast("Keine Klient:in gefunden");}}}),
-        h("span",{class:"rolehint"},fid?"Treuhand: Stammdaten (ohne Notizen), Rechnungen, Kalender (ansehen), Statistik, Stundenrapport, Buchhaltung":isMaster()?"Master-Admin: wie Admin, dazu Rollen und Rechte, Finanzen, Buchhaltung":isAdmin()?"Admin: ganzes Team, Anfragen, Auswertungen, Freigaben, Einstellungen":"Psycholog:in: Kalender, eigene Klient:innen, Rechnungen, Zahlen und Lohn"),
-        h("span",{class:"spacer"}),
-        fid?null:h("button",{type:"button",class:"btn primary",onclick:()=>{S.view="cal";render();openQuick({start:at(addDays(calAnchor(),1),14),psy:isAdmin()&&S.calPsy!=="all"?S.calPsy:S.me});}},"+ Neuer Termin")),
-        h("div",{class:"toprow"},h("div",{class:"role",role:"group","aria-label":"Ansicht"},h("button",{type:"button","aria-pressed":String(S.role==="psy"),onclick:()=>{S.role="psy";if(S.calPsy==="all")S.calPsy=S.me;render();}},"Psycholog:in"),h("button",{type:"button","aria-pressed":String(S.role==="admin"),onclick:()=>{S.role="admin";render();}},"Admin"),h("button",{type:"button","aria-pressed":String(isMaster()),onclick:()=>{S.role="master";render();}},"Master-Admin"),h("button",{type:"button","aria-pressed":String(S.role==="fid"),onclick:()=>{S.role="fid";S.openAppt=null;S.calPsy="all";S.view="cal";render();}},"Treuhand")),
-        langSw(),h("span",{class:"avatar",style:"width:34px;height:34px;font-size:13px"},"LE"))),
+      h("div",{class:"top"},h("div",{class:"toprow"},S.view==="cli"?null:h("input",{type:"search",placeholder:"Klient:in suchen …","aria-label":"Klient:in suchen",onkeydown:e=>{if(e.key==="Enter"){const q=e.target.value.toLowerCase();const c=myClients().find(x=>x.name.toLowerCase().includes(q));if(c){S.view="cli";S.openClient=c.id;render();}else toast("Keine Klient:in gefunden");}}}),
+h("span",{class:"spacer"}),langSw(),
+        fid?null:h("button",{type:"button",class:"btn primary",onclick:()=>{S.view="cal";render();openQuick({start:at(addDays(calAnchor(),1),14),psy:isAdmin()&&S.calPsy!=="all"?S.calPsy:S.me});}},"+ Neuer Termin"))),
       h("div",{class:"content"},({cal:calView,inbox:inboxView,req:reqView,cli:cliView,inv:invView,stat:statView,pay:payView,set:setView,hours:hoursView,acc:accView})[S.view]())));
 }
 
@@ -912,13 +934,14 @@ function calView(){
   const head=h("div",{class:"ptitle calbar"},
     h("button",{type:"button",class:"btn",title:"Heute (Taste T)",onclick:()=>calGo(NOW)},"Heute"),
     h("div",{class:"row",style:"gap:2px"},h("button",{type:"button",class:"btn icon","aria-label":"Zurück",title:"Zurück (Taste K)",onclick:()=>calStep(-1)},"‹"),h("button",{type:"button",class:"btn icon","aria-label":"Weiter",title:"Weiter (Taste J)",onclick:()=>calStep(1)},"›")),
-    h("h1",null,calTitle()),h("span",{class:"spacer"}),modes,sel,
-    canEdit(who==="all"?S.me:who)?h("button",{type:"button",class:"btn",onclick:()=>absenceDialog()},"+ Abwesenheit"):null,
-    canEdit(who==="all"?S.me:who)?h("button",{type:"button",class:"btn",title:"Vor-Ort-Halbtage abschalten, Online-Zeiten eintragen",onclick:()=>{S.view="set";S.setTab="avail";S.availPsy=who==="all"?S.me:who;render();}},"Verfügbarkeit"):null);
+    h("h1",null,calTitle()),h("span",{class:"spacer"}),modes,sel);
   const notices=h("div",{class:"row"},
     isFid()?null:missing.length?h("button",{type:"button",class:"pill warn",style:"border:0;cursor:pointer",onclick:()=>openAppt(missing[0].id)},"! Dokumentation fehlt bei "+missing.length+" Termin"+(missing.length>1?"en":"")):h("span",{class:"pill ok"},"Alle Termine dokumentiert"),
     openClose.length?h("button",{type:"button",class:"pill warn",style:"border:0;cursor:pointer",onclick:()=>openAppt(openClose[0].id)},"○ Abschluss offen bei "+openClose.length+" Termin"+(openClose.length>1?"en":"")):null,
-    isAdmin()&&pend.length?h("button",{type:"button",class:"pill warn",style:"border:0;cursor:pointer",onclick:()=>approveDialog(pend[0])},pend.length+" Abwesenheit zur Freigabe"):null);
+    isAdmin()&&pend.length?h("button",{type:"button",class:"pill warn",style:"border:0;cursor:pointer",onclick:()=>approveDialog(pend[0])},pend.length+" Abwesenheit zur Freigabe"):null,
+    h("span",{class:"spacer"}),
+    canEdit(who==="all"?S.me:who)?h("button",{type:"button",class:"btn ghost",onclick:()=>absenceDialog()},"+ Abwesenheit"):null,
+    canEdit(who==="all"?S.me:who)?h("button",{type:"button",class:"btn ghost",title:"Vor-Ort-Halbtage abschalten, Online-Zeiten eintragen",onclick:()=>{S.view="set";S.setTab="avail";S.availPsy=who==="all"?S.me:who;render();}},"Verfügbarkeit anpassen"):null);
   const main=S.calMode==="month"?monthGrid(who):timeGrid(who);
   const legend=h("div",{class:"row small muted"},...TYPES.map(t=>h("span",{class:"row",style:"gap:5px"},h("span",{style:`width:12px;height:12px;border-radius:3px;background:var(--t-${t.cls})`}),t.name)),h("span",{class:"row",style:"gap:5px"},h("span",{class:"swatch-block"}),"Blocker"),h("span",{class:"row",style:"gap:5px"},h("span",{class:"sw-av site"}),"verfügbar vor Ort"),h("span",{class:"row",style:"gap:5px"},h("span",{class:"sw-av online"}),"nur online verfügbar"),h("span",{class:"row",style:"gap:5px"},h("span",{class:"sw-av off"}),"nicht verfügbar"),h("span",{class:"row",style:"gap:5px"},h("span",{class:"sw-buf"}),"Puffer"),
     h("span",{class:"spacer"}),h("span",null,"✓ abgeschlossen · ○ Abschluss offen · ! Doku fehlt · ↻ Serie"));
